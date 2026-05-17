@@ -24,6 +24,12 @@ final class QuickAccessManager: ObservableObject {
             panelController.updatePosition(position)
         }
     }
+    @Published var conversionOutputMode: ConversionOutputMode = OptimizationOutputSettings.conversionOutputMode {
+        didSet {
+            guard conversionOutputMode != oldValue else { return }
+            OptimizationOutputSettings.conversionOutputMode = conversionOutputMode
+        }
+    }
 
     var visibleCardCount: Int {
         floatingItemCount + overflowCardCount + (isDropPlaceholderVisible ? 1 : 0)
@@ -432,7 +438,8 @@ final class QuickAccessManager: ObservableObject {
     private func startConversion(for id: UUID, url: URL, target: QuickAccessConversionTarget) {
         processTasks[id] = Task { [weak self] in
             do {
-                let result = try await OptimizationService.convert(sourceURL: url, target: target)
+                let mode = self?.conversionOutputMode ?? .duplicate
+                let result = try await OptimizationService.convert(sourceURL: url, target: target, mode: mode)
                 self?.completeItem(id: id, result: result)
             } catch {
                 self?.failItem(id: id, error: error)

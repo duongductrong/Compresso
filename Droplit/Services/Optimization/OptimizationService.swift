@@ -67,11 +67,11 @@ enum OptimizationService {
         }
     }
 
-    static func convert(sourceURL: URL, target: QuickAccessConversionTarget) async throws -> OptimizationResult {
+    static func convert(sourceURL: URL, target: QuickAccessConversionTarget, mode: ConversionOutputMode) async throws -> OptimizationResult {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
-                    let result = try convertSynchronously(sourceURL: sourceURL, target: target)
+                    let result = try convertSynchronously(sourceURL: sourceURL, target: target, mode: mode)
                     continuation.resume(returning: result)
                 } catch {
                     continuation.resume(throwing: error)
@@ -115,7 +115,7 @@ enum OptimizationService {
         )
     }
 
-    private static func convertSynchronously(sourceURL: URL, target: QuickAccessConversionTarget) throws -> OptimizationResult {
+    private static func convertSynchronously(sourceURL: URL, target: QuickAccessConversionTarget, mode: ConversionOutputMode) throws -> OptimizationResult {
         let sourceKind = QuickAccessFileKind.detect(from: sourceURL)
         guard QuickAccessConversionTarget.targets(for: sourceKind).contains(target) else {
             throw OptimizationError.unsupportedType
@@ -124,9 +124,13 @@ enum OptimizationService {
         let originalBytes = fileSize(at: sourceURL)
         let outputURL = try makeOutputURL(
             for: sourceURL,
-            nameComponent: "converted-\(target.fileExtension)",
-            pathExtension: target.fileExtension
+            target: target,
+            mode: mode
         )
+
+        if FileManager.default.fileExists(atPath: outputURL.path) {
+            try? FileManager.default.removeItem(at: outputURL)
+        }
 
         if target.isImageTarget {
             try runImageConversion(sourceURL: sourceURL, outputURL: outputURL, target: target)
@@ -402,6 +406,27 @@ enum OptimizationService {
         return directory
             .appendingPathComponent("\(baseName)-\(nameComponent)-\(suffix)")
             .appendingPathExtension(pathExtension)
+    }
+
+    private static func makeOutputURL(
+        for sourceURL: URL,
+        target: QuickAccessConversionTarget,
+        mode: ConversionOutputMode
+    ) throws -> URL {
+        let directory = try outputDirectory()
+        let baseName = sourceURL.deletingPathExtension().lastPathComponent
+
+        switch mode {
+        case .replace:
+            return directory
+                .appendingPathComponent(baseName)
+                .appendingPathExtension(target.fileExtension)
+        case .duplicate:
+            let suffix = UUID().uuidString.prefix(8)
+            return directory
+                .appendingPathComponent("\(baseName)-converted-\(target.fileExtension)-\(suffix)")
+                .appendingPathExtension(target.fileExtension)
+        }
     }
 
     private static func imageConversionOptions(for target: QuickAccessConversionTarget) -> [CFString: Any] {

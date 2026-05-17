@@ -189,6 +189,14 @@ struct ContentView: View {
                         .truncationMode(.middle)
                 }
             }
+
+            Picker("On conversion", selection: $quickAccess.conversionOutputMode) {
+                ForEach(ConversionOutputMode.allCases) { mode in
+                    Label(mode.displayName, systemImage: mode.systemImage)
+                        .tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
         }
         .padding(10)
         .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 8))
