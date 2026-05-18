@@ -18,6 +18,8 @@ struct QuickAccessDropReceiverView: NSViewRepresentable {
 final class DropReceiverNSView: NSView {
     var isTargeted: Binding<Bool>
     var onDrop: ([URL]) -> Void
+    private var cachedPasteboardChangeCount: Int?
+    private var cachedHasSupportedPayload = false
 
     init(isTargeted: Binding<Bool>, onDrop: @escaping ([URL]) -> Void) {
         self.isTargeted = isTargeted
@@ -47,10 +49,12 @@ final class DropReceiverNSView: NSView {
     }
 
     override func draggingExited(_ sender: NSDraggingInfo?) {
+        resetPayloadCache()
         updateTargeted(false)
     }
 
     override func draggingEnded(_ sender: NSDraggingInfo) {
+        resetPayloadCache()
         updateTargeted(false)
     }
 
@@ -67,6 +71,7 @@ final class DropReceiverNSView: NSView {
     }
 
     override func concludeDragOperation(_ sender: NSDraggingInfo?) {
+        resetPayloadCache()
         updateTargeted(false)
     }
 
@@ -84,7 +89,20 @@ final class DropReceiverNSView: NSView {
     }
 
     private func hasSupportedPayload(_ pasteboard: NSPasteboard) -> Bool {
-        QuickAccessPasteboardPayload.hasOptimizablePayload(pasteboard)
+        let changeCount = pasteboard.changeCount
+        if cachedPasteboardChangeCount == changeCount {
+            return cachedHasSupportedPayload
+        }
+
+        let hasPayload = QuickAccessPasteboardPayload.hasOptimizablePayload(pasteboard)
+        cachedPasteboardChangeCount = changeCount
+        cachedHasSupportedPayload = hasPayload
+        return hasPayload
+    }
+
+    private func resetPayloadCache() {
+        cachedPasteboardChangeCount = nil
+        cachedHasSupportedPayload = false
     }
 }
 
@@ -92,14 +110,17 @@ enum QuickAccessPasteboardPayload {
     static let gifType = NSPasteboard.PasteboardType("com.compuserve.gif")
     static let jpegType = NSPasteboard.PasteboardType("public.jpeg")
     static let pdfType = NSPasteboard.PasteboardType("com.adobe.pdf")
+    private static let inlineDataTypes: [NSPasteboard.PasteboardType] = [
+        .png,
+        .tiff,
+        jpegType,
+        gifType,
+        pdfType
+    ]
 
     static func hasOptimizablePayload(_ pasteboard: NSPasteboard) -> Bool {
         !extractOptimizableFileURLs(from: pasteboard).isEmpty
-            || pasteboard.data(forType: .png) != nil
-            || pasteboard.data(forType: .tiff) != nil
-            || pasteboard.data(forType: jpegType) != nil
-            || pasteboard.data(forType: gifType) != nil
-            || pasteboard.data(forType: pdfType) != nil
+            || pasteboard.availableType(from: inlineDataTypes) != nil
     }
 
     static func extractOptimizableURLs(from pasteboard: NSPasteboard) -> [URL] {

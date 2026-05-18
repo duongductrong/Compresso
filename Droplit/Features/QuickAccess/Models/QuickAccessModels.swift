@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import UniformTypeIdentifiers
 
-enum QuickAccessPanelEdge: String, CaseIterable, Codable, Identifiable {
+nonisolated enum QuickAccessPanelEdge: String, CaseIterable, Codable, Identifiable {
     case bottom
     case top
 
@@ -23,7 +23,7 @@ enum QuickAccessPanelEdge: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum QuickAccessPanelAlignment: String, CaseIterable, Codable, Identifiable {
+nonisolated enum QuickAccessPanelAlignment: String, CaseIterable, Codable, Identifiable {
     case left
     case center
     case right
@@ -47,7 +47,7 @@ enum QuickAccessPanelAlignment: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum QuickAccessPosition: String, CaseIterable, Codable, Identifiable {
+nonisolated enum QuickAccessPosition: String, CaseIterable, Codable, Identifiable {
     case topLeft
     case topCenter
     case topRight
@@ -185,7 +185,7 @@ enum QuickAccessPosition: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum QuickAccessTriggerInteraction: String, CaseIterable, Codable, Identifiable {
+nonisolated enum QuickAccessTriggerInteraction: String, CaseIterable, Codable, Identifiable {
     case shake
     case hold
 
@@ -206,7 +206,7 @@ enum QuickAccessTriggerInteraction: String, CaseIterable, Codable, Identifiable 
     }
 }
 
-enum QuickAccessLayout {
+nonisolated enum QuickAccessLayout {
     static let cardWidth: CGFloat = 184
     static let cardHeight: CGFloat = 118
     static let overflowCardHeight: CGFloat = cardHeight
@@ -255,14 +255,14 @@ enum QuickAccessLayout {
     }
 }
 
-enum QuickAccessJobState: Equatable {
+nonisolated enum QuickAccessJobState: Equatable {
     case queued
     case processing
     case completed
     case failed
 }
 
-enum QuickAccessFileKind: String, CaseIterable, Codable {
+nonisolated enum QuickAccessFileKind: String, CaseIterable, Codable {
     case png
     case jpeg
     case gif
@@ -319,7 +319,7 @@ enum QuickAccessFileKind: String, CaseIterable, Codable {
     }
 }
 
-enum QuickAccessConversionTarget: String, CaseIterable, Codable, Identifiable {
+nonisolated enum QuickAccessConversionTarget: String, CaseIterable, Codable, Identifiable {
     case png
     case jpeg
     case webp
@@ -403,10 +403,10 @@ struct QuickAccessItem: Identifiable {
     let id: UUID
     let sourceURL: URL
     let kind: QuickAccessFileKind
-    let thumbnail: NSImage
+    var thumbnail: NSImage
     let createdAt: Date
     let originalBytes: Int64
-    let mediaDuration: TimeInterval?
+    var mediaDuration: TimeInterval?
     var state: QuickAccessJobState
     var elapsed: TimeInterval
     var progress: Double?

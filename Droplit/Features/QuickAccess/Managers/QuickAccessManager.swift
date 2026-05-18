@@ -86,12 +86,16 @@ final class QuickAccessManager: ObservableObject {
     private var currentDragPasteboardChangeCount: Int?
     private var isCurrentDragPayloadOptimizable = false
     private var processTasks: [UUID: Task<Void, Never>] = [:]
+    private var thumbnailTasks: [UUID: Task<Void, Never>] = [:]
     private var elapsedTasks: [UUID: Task<Void, Never>] = [:]
     private var completedDismissTasks: [UUID: Task<Void, Never>] = [:]
+    private var lastDragEventTimestamp: TimeInterval = 0
 
     private let placeholderManualTimeout: UInt64 = 12_000_000_000
     private let placeholderPostDragTimeout: UInt64 = 2_000_000_000
     private let completedCardDismissTimeout: UInt64 = 15_000_000_000
+    private let minimumDragEventInterval: TimeInterval = 1.0 / 60.0
+    private let elapsedTickerInterval: UInt64 = 250_000_000
 
     private init() {
         if let raw = UserDefaults.standard.string(forKey: Keys.position),
@@ -163,9 +167,11 @@ final class QuickAccessManager: ObservableObject {
         isDragSessionActive = false
         resetDragPayloadState(markCurrentPasteboardConsumed: true)
         processTasks.values.forEach { $0.cancel() }
+        thumbnailTasks.values.forEach { $0.cancel() }
         elapsedTasks.values.forEach { $0.cancel() }
         completedDismissTasks.values.forEach { $0.cancel() }
         processTasks.removeAll()
+        thumbnailTasks.removeAll()
         elapsedTasks.removeAll()
         completedDismissTasks.removeAll()
         panelController.hide()
@@ -224,9 +230,11 @@ final class QuickAccessManager: ObservableObject {
 
     func removeItem(id: UUID) {
         processTasks[id]?.cancel()
+        thumbnailTasks[id]?.cancel()
         elapsedTasks[id]?.cancel()
         completedDismissTasks[id]?.cancel()
         processTasks[id] = nil
+        thumbnailTasks[id] = nil
         elapsedTasks[id] = nil
         completedDismissTasks[id] = nil
 
@@ -286,6 +294,12 @@ final class QuickAccessManager: ObservableObject {
     }
 
     private func recordDrag(location: CGPoint, timestamp: TimeInterval) {
+        if lastDragEventTimestamp > 0,
+           timestamp - lastDragEventTimestamp < minimumDragEventInterval {
+            return
+        }
+        lastDragEventTimestamp = timestamp
+
         let wasDragSessionActive = isDragSessionActive
         isDragSessionActive = true
         placeholderTimeoutTask?.cancel()
@@ -340,6 +354,7 @@ final class QuickAccessManager: ObservableObject {
         shakeDetector.reset()
         holdTriggerTask?.cancel()
         holdTriggerTask = nil
+        lastDragEventTimestamp = 0
     }
 
     private var holdTriggerDelayNanoseconds: UInt64 {
@@ -382,16 +397,16 @@ final class QuickAccessManager: ObservableObject {
     private func addOptimizationJob(for url: URL) async {
         let kind = QuickAccessFileKind.detect(from: url)
         let originalBytes = fileSize(at: url)
-        let thumbnail = await QuickAccessThumbnailGenerator.generate(from: url, kind: kind)
-        var item = QuickAccessItem(
+        let placeholderThumbnail = QuickAccessThumbnailGenerator.placeholderThumbnail(systemImage: kind.systemImage)
+        let item = QuickAccessItem(
             sourceURL: url,
             kind: kind,
-            thumbnail: thumbnail.image,
+            thumbnail: placeholderThumbnail,
             originalBytes: originalBytes,
-            mediaDuration: thumbnail.duration,
-            pixelSize: thumbnail.pixelSize
+            mediaDuration: nil,
+            pixelSize: nil
         )
-        item.progress = thumbnail.duration == nil ? nil : 0
+        let itemID = item.id
 
         withAnimation(QuickAccessAnimations.cardInsert) {
             items.insert(item, at: 0)
@@ -400,6 +415,29 @@ final class QuickAccessManager: ObservableObject {
 
         refreshPanel()
         schedulePendingJobs()
+
+        thumbnailTasks[itemID] = Task { [weak self] in
+            let thumbnail = await QuickAccessThumbnailGenerator.generate(from: url, kind: kind)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self?.applyThumbnail(thumbnail, to: itemID)
+            }
+        }
+    }
+
+    private func applyThumbnail(_ thumbnail: QuickAccessThumbnailResult, to id: UUID) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+
+        thumbnailTasks[id] = nil
+        items[index].thumbnail = thumbnail.image
+        items[index].mediaDuration = thumbnail.duration
+        items[index].pixelSize = thumbnail.pixelSize
+
+        if items[index].state == .processing,
+           let duration = thumbnail.duration,
+           duration > 0 {
+            items[index].progress = min(items[index].elapsed / duration, 0.94)
+        }
     }
 
     private func schedulePendingJobs() {
@@ -500,7 +538,7 @@ final class QuickAccessManager: ObservableObject {
         let startedAt = Date()
         elapsedTasks[id] = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 100_000_000)
+                try? await Task.sleep(nanoseconds: self?.elapsedTickerInterval ?? 250_000_000)
                 self?.tickElapsed(id: id, startedAt: startedAt)
             }
         }

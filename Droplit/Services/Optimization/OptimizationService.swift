@@ -53,31 +53,27 @@ enum OptimizationError: LocalizedError {
     }
 }
 
-enum OptimizationService {
+nonisolated enum OptimizationService {
     static func optimize(sourceURL: URL, kind: QuickAccessFileKind) async throws -> OptimizationResult {
-        try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    let result = try optimizeSynchronously(sourceURL: sourceURL, kind: kind)
-                    continuation.resume(returning: result)
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
+        let task = Task.detached(priority: .userInitiated) {
+            try optimizeSynchronously(sourceURL: sourceURL, kind: kind)
         }
+        return try await withTaskCancellationHandler(operation: {
+            try await task.value
+        }, onCancel: {
+            task.cancel()
+        })
     }
 
     static func convert(sourceURL: URL, target: QuickAccessConversionTarget, mode: ConversionOutputMode) async throws -> OptimizationResult {
-        try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    let result = try convertSynchronously(sourceURL: sourceURL, target: target, mode: mode)
-                    continuation.resume(returning: result)
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
+        let task = Task.detached(priority: .userInitiated) {
+            try convertSynchronously(sourceURL: sourceURL, target: target, mode: mode)
         }
+        return try await withTaskCancellationHandler(operation: {
+            try await task.value
+        }, onCancel: {
+            task.cancel()
+        })
     }
 
     private static func optimizeSynchronously(sourceURL: URL, kind: QuickAccessFileKind) throws -> OptimizationResult {
@@ -498,16 +494,35 @@ enum OptimizationService {
         process.executableURL = executableURL
         process.arguments = arguments
 
-        let errorPipe = Pipe()
-        process.standardError = errorPipe
-        process.standardOutput = Pipe()
+        let logURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Droplit-Optimizer-\(UUID().uuidString).log")
+        FileManager.default.createFile(atPath: logURL.path, contents: nil)
+        let logHandle = try FileHandle(forWritingTo: logURL)
+        let outputHandle = FileHandle(forWritingAtPath: "/dev/null")
+        defer {
+            try? logHandle.close()
+            try? outputHandle?.close()
+            try? FileManager.default.removeItem(at: logURL)
+        }
+
+        process.standardError = logHandle
+        if let outputHandle {
+            process.standardOutput = outputHandle
+        }
 
         try process.run()
-        process.waitUntilExit()
+        while process.isRunning {
+            if Task.isCancelled {
+                process.terminate()
+                process.waitUntilExit()
+                throw CancellationError()
+            }
+            Thread.sleep(forTimeInterval: 0.05)
+        }
 
         guard process.terminationStatus == 0 else {
-            let data = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            let message = String(data: data, encoding: .utf8)?
+            try? logHandle.synchronize()
+            let message = (try? String(contentsOf: logURL, encoding: .utf8))?
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             throw OptimizationError.commandFailed(message)
         }
@@ -519,7 +534,7 @@ enum OptimizationService {
     }
 }
 
-enum OptimizationToolResolver {
+nonisolated enum OptimizationToolResolver {
     static let searchPaths = [
         "/opt/homebrew/bin",
         "/usr/local/bin",
@@ -651,7 +666,7 @@ enum HomebrewBootstrapService {
     }
 }
 
-private extension NSImage {
+private nonisolated extension NSImage {
     var pixelSizeForOptimization: CGSize? {
         guard let representation = representations.max(by: { $0.pixelsWide < $1.pixelsWide }) else {
             return nil

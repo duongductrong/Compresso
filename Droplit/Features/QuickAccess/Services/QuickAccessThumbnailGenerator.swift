@@ -14,15 +14,27 @@ enum QuickAccessThumbnailGenerator {
         case .video:
             return await generateVideoThumbnail(from: url)
         case .pdf:
-            return generatePDFThumbnail(from: url)
+            return await generateOffMain {
+                generatePDFThumbnail(from: url)
+            }
         case .png, .jpeg, .gif, .image:
-            return generateImageThumbnail(from: url, fallbackKind: kind)
+            return await generateOffMain {
+                generateImageThumbnail(from: url, fallbackKind: kind)
+            }
         case .unknown:
             return QuickAccessThumbnailResult(
                 image: placeholderThumbnail(systemImage: kind.systemImage),
                 pixelSize: nil,
                 duration: nil
             )
+        }
+    }
+
+    private static func generateOffMain(_ work: @escaping () -> QuickAccessThumbnailResult) async -> QuickAccessThumbnailResult {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                continuation.resume(returning: work())
+            }
         }
     }
 

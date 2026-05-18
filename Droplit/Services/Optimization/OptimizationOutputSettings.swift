@@ -1,6 +1,6 @@
 import Foundation
 
-enum ConversionOutputMode: String, CaseIterable, Codable, Identifiable {
+nonisolated enum ConversionOutputMode: String, CaseIterable, Codable, Identifiable {
     case replace
     case duplicate
 
@@ -21,7 +21,7 @@ enum ConversionOutputMode: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum OptimizationOutputSettings {
+nonisolated enum OptimizationOutputSettings {
     private static let outputDirectoryKey = "optimization.outputDirectory"
     private static let conversionOutputModeKey = "optimization.conversionOutputMode"
 
