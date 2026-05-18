@@ -16,9 +16,6 @@ enum DroplitSettingsSection: String, CaseIterable, Identifiable {
     case queue
     case concurrency
     case storage
-    case appearance
-    case privacy
-    case advanced
     case about
 
     var id: Self { self }
@@ -33,9 +30,6 @@ enum DroplitSettingsSection: String, CaseIterable, Identifiable {
         case .queue: "Media Optimization"
         case .concurrency: "Concurrency"
         case .storage: "Storage"
-        case .appearance: "Appearance"
-        case .privacy: "Privacy"
-        case .advanced: "Advanced Settings"
         case .about: "About"
         }
     }
@@ -50,9 +44,6 @@ enum DroplitSettingsSection: String, CaseIterable, Identifiable {
         case .queue: "Current optimization jobs and imports"
         case .concurrency: "Parallel optimization limits"
         case .storage: "Temporary output retention"
-        case .appearance: "Window, material, and control style"
-        case .privacy: "Local processing and file handling"
-        case .advanced: "Defaults, recovery, and power-user details"
         case .about: "Version, build, and app details"
         }
     }
@@ -67,9 +58,6 @@ enum DroplitSettingsSection: String, CaseIterable, Identifiable {
         case .queue: "tray.full.fill"
         case .concurrency: "bolt.horizontal.circle.fill"
         case .storage: "internaldrive.fill"
-        case .appearance: "circle.lefthalf.filled"
-        case .privacy: "hand.raised.fill"
-        case .advanced: "slider.horizontal.3"
         case .about: "info.circle.fill"
         }
     }
@@ -103,7 +91,7 @@ enum DroplitSettingsSection: String, CaseIterable, Identifiable {
     static let sidebarGroups: [DroplitSettingsSidebarGroup] = [
         DroplitSettingsSidebarGroup(
             title: "Settings",
-            sections: [.quickAccess, .output, .tools, .appearance, .privacy, .advanced]
+            sections: [.quickAccess, .output, .tools]
         ),
         DroplitSettingsSidebarGroup(
             title: "Tool",

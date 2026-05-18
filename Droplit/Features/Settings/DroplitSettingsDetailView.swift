@@ -27,7 +27,7 @@ struct DroplitSettingsDetailView: View {
             ToolsSettingsView()
         case .queue:
             QueueSettingsView(quickAccess: quickAccess, isImporting: $isImporting)
-        case .appearance, .privacy, .advanced, .about:
+        case .about:
             InfoSettingsView(section: selection)
         }
     }
