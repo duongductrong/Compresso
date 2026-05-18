@@ -20,8 +20,8 @@
   </p>
 
   <p>
-    <a href="https://github.com/duongductrong/Ghosted/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/duongductrong/Ghosted?style=flat&amp;logo=github" /></a>
-    <a href="https://github.com/duongductrong/Ghosted/network/members"><img alt="GitHub Forks" src="https://img.shields.io/github/forks/duongductrong/Ghosted?style=flat&amp;logo=github" /></a>
+    <a href="https://github.com/duongductrong/Droplit/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/duongductrong/Droplit?style=flat&amp;logo=github" /></a>
+    <a href="https://github.com/duongductrong/Droplit/network/members"><img alt="GitHub Forks" src="https://img.shields.io/github/forks/duongductrong/Droplit?style=flat&amp;logo=github" /></a>
   </p>
 </div>
 

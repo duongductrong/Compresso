@@ -29,7 +29,7 @@ enum DroplitSettingsSection: String, CaseIterable, Identifiable {
         case .quickAccess: "Quick Access"
         case .output: "Output & Storage"
         case .conversion: "Conversion"
-        case .tools: "Optimizer Tools"
+        case .tools: "Dependencies"
         case .queue: "Media Optimization"
         case .concurrency: "Concurrency"
         case .storage: "Storage"
@@ -46,7 +46,7 @@ enum DroplitSettingsSection: String, CaseIterable, Identifiable {
         case .quickAccess: "Trigger, placement, and concurrency"
         case .output: "Save location, storage, and conversion output"
         case .conversion: "How converted files are written"
-        case .tools: "Optimizer availability and setup"
+        case .tools: "Dependency availability and setup"
         case .queue: "Current optimization jobs and imports"
         case .concurrency: "Parallel optimization limits"
         case .storage: "Temporary output retention"
@@ -103,11 +103,11 @@ enum DroplitSettingsSection: String, CaseIterable, Identifiable {
     static let sidebarGroups: [DroplitSettingsSidebarGroup] = [
         DroplitSettingsSidebarGroup(
             title: "Settings",
-            sections: [.quickAccess, .output, .appearance, .privacy, .advanced]
+            sections: [.quickAccess, .output, .tools, .appearance, .privacy, .advanced]
         ),
         DroplitSettingsSidebarGroup(
             title: "Tool",
-            sections: [.tools, .queue]
+            sections: [.queue]
         )
     ]
 

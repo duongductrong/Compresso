@@ -650,6 +650,38 @@ enum HomebrewBootstrapService {
         }
     }
 
+    static func installTool(_ tool: OptimizationTool) async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    guard let homebrewURL else {
+                        throw HomebrewBootstrapError.homebrewMissing
+                    }
+                    try runHomebrew(homebrewURL, arguments: ["install", tool.brewPackage])
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    static func uninstallTool(_ tool: OptimizationTool) async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    guard let homebrewURL else {
+                        throw HomebrewBootstrapError.homebrewMissing
+                    }
+                    try runHomebrew(homebrewURL, arguments: ["uninstall", tool.brewPackage])
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
     private static func installMissingToolsSynchronously(
         progress: HomebrewBootstrapProgressHandler?
     ) throws -> HomebrewBootstrapResult {

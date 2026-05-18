@@ -324,7 +324,7 @@ struct OnboardingToolSetupView: View {
         case .installing:
             return "Installing \(progress.currentPackage ?? "package")"
         case .verifying:
-            return "Verifying optimizer tools"
+            return "Verifying dependencies"
         case .finished:
             return "Install complete"
         }

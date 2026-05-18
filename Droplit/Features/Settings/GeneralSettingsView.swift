@@ -106,9 +106,9 @@ struct GeneralSettingsView: View {
     private var toolStatusText: String {
         let missingCount = HomebrewBootstrapService.missingTools().count
         if missingCount == 0 {
-            return "All optimizer tools ready"
+            return "All dependencies ready"
         }
-        return "\(missingCount) missing optimizer tools"
+        return "\(missingCount) missing dependencies"
     }
 
     private var queueSummaryText: String {
