@@ -7,8 +7,10 @@ trigger interaction (shake by default, or hold for the configured delay), drop
 into the floating card, and Droplit optimizes the item with local CLI tools.
 The floating drop card stays pinned while the drag session is active, then fades
 after release if nothing was dropped. Completed optimization cards stay visible
-for 15 seconds before auto-hiding. Optimized files are saved to the configured
-Output folder in the main window, defaulting to Desktop.
+for 15 seconds before auto-hiding. By default, optimized files are saved to
+Droplit's temporary app storage and expire after the configured retention
+period. Turn on Save location in the Output panel to keep optimized files in the
+selected folder.
 
 Supported optimizer tools:
 

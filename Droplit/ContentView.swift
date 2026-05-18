@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import AppKit
 import UniformTypeIdentifiers
 
 struct ContentView: View {
@@ -15,7 +14,6 @@ struct ContentView: View {
     @State private var toolRefreshID = UUID()
     @State private var isInstallingTools = false
     @State private var toolBootstrapMessage: String?
-    @State private var outputDirectory = OptimizationOutputSettings.outputDirectory
 
     var body: some View {
         VStack(spacing: 0) {
@@ -109,7 +107,7 @@ struct ContentView: View {
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
 
-            outputConfiguration
+            OutputSettingsView(quickAccess: quickAccess)
             triggerConfiguration
             concurrencyConfiguration
 
@@ -141,56 +139,6 @@ struct ContentView: View {
 
             Spacer()
         }
-    }
-
-    private var outputConfiguration: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Text("Output")
-                    .font(.headline)
-
-                Spacer()
-
-                Button {
-                    chooseOutputDirectory()
-                } label: {
-                    Image(systemName: "folder.badge.gearshape")
-                }
-                .labelStyle(.iconOnly)
-                .buttonStyle(.borderless)
-                .help("Choose output folder")
-            }
-
-            HStack(spacing: 10) {
-                Image(systemName: "folder.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.blue)
-                    .frame(width: 30, height: 30)
-                    .background(.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(OptimizationOutputSettings.displayName(for: outputDirectory))
-                        .font(.system(size: 13, weight: .semibold))
-                        .lineLimit(1)
-
-                    Text(outputDirectory.path)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-            }
-
-            Picker("On conversion", selection: $quickAccess.conversionOutputMode) {
-                ForEach(ConversionOutputMode.allCases) { mode in
-                    Label(mode.displayName, systemImage: mode.systemImage)
-                        .tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-        }
-        .padding(10)
-        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 8))
     }
 
     private var triggerConfiguration: some View {
@@ -402,22 +350,6 @@ struct ContentView: View {
 
     private func toolNames(_ tools: [OptimizationTool]) -> String {
         tools.map(\.name).joined(separator: ", ")
-    }
-
-    private func chooseOutputDirectory() {
-        let panel = NSOpenPanel()
-        panel.title = "Choose Output Folder"
-        panel.message = "Optimized files will be saved here."
-        panel.prompt = "Choose"
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = true
-        panel.directoryURL = outputDirectory
-
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        OptimizationOutputSettings.outputDirectory = url
-        outputDirectory = url
     }
 
     private func shortToolMessage(_ message: String) -> String {

@@ -172,9 +172,7 @@ enum QuickAccessPasteboardPayload {
     }
 
     private static func writeDroppedImage(data: Data, extension pathExtension: String) throws -> URL {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("Droplit-Drops", isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let directory = try OptimizationTemporaryFileStore.ensureDroppedInputDirectory()
         let url = directory
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension(pathExtension)

@@ -21,9 +21,23 @@ nonisolated enum ConversionOutputMode: String, CaseIterable, Codable, Identifiab
     }
 }
 
+nonisolated enum OptimizationOutputDestinationKind {
+    case userLocation
+    case temporary
+}
+
+nonisolated struct OptimizationOutputDestination {
+    let kind: OptimizationOutputDestinationKind
+    let directory: URL
+}
+
 nonisolated enum OptimizationOutputSettings {
+    static let allowedTemporaryRetentionDays = 1...90
+
     private static let outputDirectoryKey = "optimization.outputDirectory"
     private static let conversionOutputModeKey = "optimization.conversionOutputMode"
+    private static let saveLocationEnabledKey = "optimization.saveLocationEnabled"
+    private static let temporaryRetentionDaysKey = "optimization.temporaryRetentionDays"
 
     static var outputDirectory: URL {
         get {
@@ -49,6 +63,43 @@ nonisolated enum OptimizationOutputSettings {
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: conversionOutputModeKey)
         }
+    }
+
+    static var saveLocationEnabled: Bool {
+        get {
+            UserDefaults.standard.bool(forKey: saveLocationEnabledKey)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: saveLocationEnabledKey)
+        }
+    }
+
+    static var temporaryRetentionDays: Int {
+        get {
+            let savedDays = UserDefaults.standard.integer(forKey: temporaryRetentionDaysKey)
+            return savedDays > 0 ? clampTemporaryRetentionDays(savedDays) : 1
+        }
+        set {
+            UserDefaults.standard.set(clampTemporaryRetentionDays(newValue), forKey: temporaryRetentionDaysKey)
+        }
+    }
+
+    static var outputDestination: OptimizationOutputDestination {
+        if saveLocationEnabled {
+            return OptimizationOutputDestination(
+                kind: .userLocation,
+                directory: outputDirectory
+            )
+        }
+
+        return OptimizationOutputDestination(
+            kind: .temporary,
+            directory: OptimizationTemporaryFileStore.outputDirectory
+        )
+    }
+
+    static func clampTemporaryRetentionDays(_ days: Int) -> Int {
+        min(max(days, allowedTemporaryRetentionDays.lowerBound), allowedTemporaryRetentionDays.upperBound)
     }
 
     static func displayName(for url: URL) -> String {

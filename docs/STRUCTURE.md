@@ -14,10 +14,13 @@ flowchart TD
     E --> S["Concurrency scheduler"]
     S --> G["OptimizationService"]
     G --> H["CLI optimizer tool"]
-    H --> I["Configured output folder"]
+    H --> O["Output destination resolver"]
+    O --> I["Selected output folder or app temp storage"]
     I --> J["Completed Quick Access card"]
     J --> N["Quick conversion buttons"]
     N --> G
+    P["App launch/settings change"] --> Q["Temp output cleanup"]
+    Q --> O
     K["Tools panel"] --> L["HomebrewBootstrapService"]
     L --> M["brew install missing packages"]
     M --> G
@@ -31,6 +34,9 @@ Droplit/
     AppDelegate.swift
 
   Features/
+    OutputSettings/
+      OutputSettingsView.swift
+
     QuickAccess/
       Components/
         QuickAccessCardView.swift
@@ -53,6 +59,7 @@ Droplit/
     Optimization/
       OptimizationOutputSettings.swift
       OptimizationService.swift
+      OptimizationTemporaryFileStore.swift
 
   Support/
     ScreenUtility.swift
@@ -77,8 +84,9 @@ docs/
 | Path | Owns |
 | --- | --- |
 | `App/` | App lifecycle and launch-time service bootstrap |
+| `Features/OutputSettings/` | Output destination toggle, folder picker, temp retention controls |
 | `Features/QuickAccess/` | Floating stack, placeholder card, drag/drop, card visuals, trigger detection |
-| `Services/Optimization/` | Local CLI tool resolution, Homebrew bootstrap, optimizer process execution |
+| `Services/Optimization/` | Local CLI tool resolution, Homebrew bootstrap, output destination resolution, temp cleanup, optimizer process execution |
 | `Support/` | Small platform helpers |
 | `docs/DESIGN_TOKENS.md` | Shared visual tokens and state treatment |
 
@@ -101,20 +109,22 @@ docs/
 12. The concurrency scheduler starts up to the configured number of optimization jobs.
 13. Extra jobs remain queued until an active job completes, fails, or is removed.
 14. Removing a processing card cancels the Swift task and terminates the active optimizer process.
-15. `OptimizationService` writes optimized output to configured output folder.
-16. If no folder configured, output defaults to Desktop.
-17. Supported image and video cards show XS conversion buttons under the card.
-18. Image conversion targets are PNG, JPEG, WebP, and HEIC.
-19. Video/GIF conversion targets are GIF, MOV, and MP4.
-20. Conversion actions always read `QuickAccessItem.sourceURL`, not the optimized output URL, so repeated switches do not chain from a compressed/downscaled derivative.
-21. Swipe a Quick Access result card left or right to dismiss that card.
-22. Drag a completed Quick Access card away from its dismiss direction to drop the optimized or converted output into external apps.
-23. External card drag uses an AppKit `NSDraggingSession` with the output file URL as an `NSURL` pasteboard writer for broad Finder, native app, and browser compatibility.
-24. Double-click a card to open the optimized or converted output, falling back to the source file when output is unavailable.
-25. Completed Quick Access cards stay visible for 15 seconds, then auto-hide.
-26. The floating Quick Access stack shows the newest cards plus an overflow summary when the queue is larger than the panel should display.
+15. `OptimizationService` resolves the current output destination.
+16. If Save location is on, output writes to the selected folder.
+17. If Save location is off, output writes to Droplit app temp storage.
+18. Temp outputs expire after the configured retention period, defaulting to 1 day and capped at 90 days.
+19. Supported image and video cards show XS conversion buttons under the card.
+20. Image conversion targets are PNG, JPEG, WebP, and HEIC.
+21. Video/GIF conversion targets are GIF, MOV, and MP4.
+22. Conversion actions always read `QuickAccessItem.sourceURL`, not the optimized output URL, so repeated switches do not chain from a compressed/downscaled derivative.
+23. Swipe a Quick Access result card left or right to dismiss that card.
+24. Drag a completed Quick Access card away from its dismiss direction to drop the optimized or converted output into external apps.
+25. External card drag uses an AppKit `NSDraggingSession` with the output file URL as an `NSURL` pasteboard writer for broad Finder, native app, and browser compatibility.
+26. Double-click a card to open the optimized or converted output, falling back to the source file when output is unavailable.
+27. Completed Quick Access cards stay visible for 15 seconds, then auto-hide.
+28. The floating Quick Access stack shows the newest cards plus an overflow summary when the queue is larger than the panel should display.
 
-Output folder is changed from main window Output configuration.
+Output destination and retention are changed from main window Output configuration.
 Parallel job count is changed from main window Concurrency configuration.
 
 ## Homebrew Bootstrap Flow
@@ -148,5 +158,7 @@ brew install <missing-packages>
 
 - The app intentionally disables App Sandbox for now so local optimizer binaries can execute.
 - Missing optimizer binaries surface as failed Quick Access cards.
+- Save location is off by default. Temp output storage lives under `~/Library/Application Support/Droplit/Temporary Outputs/`.
+- App launch and retention changes trigger cleanup for expired temp outputs and inline dropped-source temp files.
 - MOV/MP4 conversion tries stream-copy remux first to avoid quality loss, then falls back to high-quality H.264/AAC transcode if the source container or codecs cannot be copied.
 - Optimizer stderr is written to a temporary log file instead of an undrained pipe, preventing verbose tools from blocking on full process pipes.

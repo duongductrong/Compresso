@@ -477,9 +477,14 @@ nonisolated enum OptimizationService {
     }
 
     private static func outputDirectory() throws -> URL {
-        let root = OptimizationOutputSettings.outputDirectory
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        return root
+        let destination = OptimizationOutputSettings.outputDestination
+        switch destination.kind {
+        case .userLocation:
+            try FileManager.default.createDirectory(at: destination.directory, withIntermediateDirectories: true)
+            return destination.directory
+        case .temporary:
+            return try OptimizationTemporaryFileStore.makeJobOutputDirectory()
+        }
     }
 
     private static func requiredExecutable(_ name: String) throws -> URL {
