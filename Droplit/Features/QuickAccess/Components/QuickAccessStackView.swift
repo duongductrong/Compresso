@@ -22,12 +22,7 @@ struct QuickAccessStackView: View {
     }
 
     private var panelSize: CGSize {
-        QuickAccessLayout.panelSize(
-            itemCardCount: manager.floatingItems.count,
-            conversionActionRowCount: manager.floatingItems.filter(\.hasConversionTargets).count,
-            dropPlaceholderCount: manager.isDropPlaceholderVisible ? 1 : 0,
-            includesOverflowCard: manager.hasOverflowCard
-        )
+        QuickAccessLayout.fixedPanelSize(includesDropPlaceholder: manager.isDropPlaceholderVisible)
     }
 
     @ViewBuilder
@@ -39,25 +34,23 @@ struct QuickAccessStackView: View {
             }
 
             ForEach(floatingItemsInVisualOrder) { item in
-                QuickAccessCardView(item: item, manager: manager)
-                    .id(item.id)
-                    .transition(cardTransition)
+                cardView(for: item)
             }
 
             if manager.hasOverflowCard {
-                QuickAccessOverflowCardView(manager: manager)
+                QuickAccessOverflowCardView(summary: overflowSummary, reduceMotion: reduceMotion)
+                    .equatable()
                     .transition(cardTransition)
             }
         } else {
             if manager.hasOverflowCard {
-                QuickAccessOverflowCardView(manager: manager)
+                QuickAccessOverflowCardView(summary: overflowSummary, reduceMotion: reduceMotion)
+                    .equatable()
                     .transition(cardTransition)
             }
 
             ForEach(floatingItemsInVisualOrder) { item in
-                QuickAccessCardView(item: item, manager: manager)
-                    .id(item.id)
-                    .transition(cardTransition)
+                cardView(for: item)
             }
 
             if manager.isDropPlaceholderVisible {
@@ -65,6 +58,20 @@ struct QuickAccessStackView: View {
                     .transition(cardTransition)
             }
         }
+    }
+
+    private func cardView(for item: QuickAccessItem) -> some View {
+        QuickAccessCardView(
+            item: item,
+            position: manager.position,
+            onRemove: { id in manager.removeItem(id: id) },
+            onOpen: { id in manager.openItem(for: id) },
+            onReveal: { id in manager.revealOutput(for: id) },
+            onConvert: { id, target in manager.convertItem(id: id, to: target) },
+            reduceMotion: reduceMotion
+        )
+        .equatable()
+        .transition(cardTransition)
     }
 
     private var cardTransition: AnyTransition {
@@ -100,12 +107,35 @@ struct QuickAccessStackView: View {
         }
         return Array(manager.floatingItems.reversed())
     }
+
+    private var overflowSummary: QuickAccessOverflowSummary {
+        QuickAccessOverflowSummary(
+            hiddenCount: manager.hiddenFloatingItemCount,
+            processingCount: manager.processingCount,
+            queuedCount: manager.queuedCount,
+            completedCount: manager.completedCount,
+            failedCount: manager.failedCount
+        )
+    }
 }
 
-private struct QuickAccessOverflowCardView: View {
-    @ObservedObject var manager: QuickAccessManager
+private struct QuickAccessOverflowSummary: Equatable {
+    let hiddenCount: Int
+    let processingCount: Int
+    let queuedCount: Int
+    let completedCount: Int
+    let failedCount: Int
+}
+
+private struct QuickAccessOverflowCardView: View, Equatable {
+    let summary: QuickAccessOverflowSummary
+    let reduceMotion: Bool
     @State private var isHovering = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    static func == (lhs: QuickAccessOverflowCardView, rhs: QuickAccessOverflowCardView) -> Bool {
+        lhs.summary == rhs.summary
+            && lhs.reduceMotion == rhs.reduceMotion
+    }
 
     var body: some View {
         ZStack {
@@ -188,7 +218,7 @@ private struct QuickAccessOverflowCardView: View {
 
             Spacer()
 
-            Text("+\(manager.hiddenFloatingItemCount)")
+            Text("+\(summary.hiddenCount)")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundStyle(.primary)
                 .monospacedDigit()
@@ -204,7 +234,7 @@ private struct QuickAccessOverflowCardView: View {
 
     private var summaryContent: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("\(manager.hiddenFloatingItemCount) hidden")
+            Text("\(summary.hiddenCount) hidden")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.white.opacity(0.82))
                 .lineLimit(1)
@@ -231,10 +261,10 @@ private struct QuickAccessOverflowCardView: View {
 
     private var summaryText: String {
         let parts = [
-            labeledCount(manager.processingCount, "processing"),
-            labeledCount(manager.queuedCount, "queued"),
-            labeledCount(manager.completedCount, "done"),
-            labeledCount(manager.failedCount, "failed")
+            labeledCount(summary.processingCount, "processing"),
+            labeledCount(summary.queuedCount, "queued"),
+            labeledCount(summary.completedCount, "done"),
+            labeledCount(summary.failedCount, "failed")
         ].compactMap { $0 }
         return parts.isEmpty ? "Queue active" : parts.joined(separator: " · ")
     }

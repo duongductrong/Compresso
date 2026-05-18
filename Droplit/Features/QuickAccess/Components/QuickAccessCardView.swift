@@ -8,9 +8,14 @@ private enum QuickAccessCardDragMode {
     case unavailable
 }
 
-struct QuickAccessCardView: View {
+struct QuickAccessCardView: View, Equatable {
     let item: QuickAccessItem
-    @ObservedObject var manager: QuickAccessManager
+    let position: QuickAccessPosition
+    let onRemove: (UUID) -> Void
+    let onOpen: (UUID) -> Void
+    let onReveal: (UUID) -> Void
+    let onConvert: (UUID, QuickAccessConversionTarget) -> Void
+    let reduceMotion: Bool
     @State private var isHovering = false
     @State private var isDismissing = false
     @State private var isDraggingToDismiss = false
@@ -18,11 +23,16 @@ struct QuickAccessCardView: View {
     @State private var dragMode: QuickAccessCardDragMode = .undetermined
     @State private var swipeOffset: CGFloat = 0
     @State private var dismissTask: Task<Void, Never>?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let dragDirectionThreshold: CGFloat = 30
     private let swipeDismissThreshold: CGFloat = 74
     private let swipeVelocityThreshold: CGFloat = 320
+
+    static func == (lhs: QuickAccessCardView, rhs: QuickAccessCardView) -> Bool {
+        lhs.position == rhs.position
+            && lhs.reduceMotion == rhs.reduceMotion
+            && lhs.item.rendersSameQuickAccessCard(as: rhs.item)
+    }
 
     var body: some View {
         VStack(spacing: QuickAccessLayout.conversionActionSpacing) {
@@ -79,19 +89,19 @@ struct QuickAccessCardView: View {
             }
         }
         .onTapGesture(count: 2) {
-            manager.openItem(for: item.id)
+            onOpen(item.id)
         }
         .contextMenu {
             Button(item.outputURL == nil ? "Open Original" : "Open Preview") {
-                manager.openItem(for: item.id)
+                onOpen(item.id)
             }
             if item.outputURL != nil {
                 Button("Reveal in Finder") {
-                    manager.revealOutput(for: item.id)
+                    onReveal(item.id)
                 }
             }
             Button("Remove") {
-                manager.removeItem(id: item.id)
+                onRemove(item.id)
             }
         }
     }
@@ -112,7 +122,7 @@ struct QuickAccessCardView: View {
         let isActive = item.activeConversionTarget == target
 
         return Button {
-            manager.convertItem(id: item.id, to: target)
+            onConvert(item.id, target)
         } label: {
             ZStack {
                 Capsule()
@@ -231,7 +241,7 @@ struct QuickAccessCardView: View {
 
     private func isDismissTranslation(_ translation: CGSize) -> Bool {
         let horizontalDominance = abs(translation.width) >= max(abs(translation.height) * 0.75, 12)
-        return horizontalDominance && translation.width * manager.position.dismissDirection > 0
+        return horizontalDominance && translation.width * position.dismissDirection > 0
     }
 
     private func finishSwipeDismiss(_ value: DragGesture.Value) {
@@ -242,7 +252,7 @@ struct QuickAccessCardView: View {
             && (abs(translation) > swipeDismissThreshold || abs(value.predictedEndTranslation.width) > swipeVelocityThreshold)
 
         if shouldDismiss {
-            dismissCard(inDirection: translation == 0 ? manager.position.dismissDirection : translation)
+            dismissCard(inDirection: translation == 0 ? position.dismissDirection : translation)
         } else {
             resetSwipeState()
         }
@@ -269,7 +279,7 @@ struct QuickAccessCardView: View {
         ) { success in
             isDraggingExternally = false
             if success {
-                manager.removeItem(id: item.id)
+                onRemove(item.id)
             }
         }
 
@@ -293,7 +303,7 @@ struct QuickAccessCardView: View {
         isDismissing = true
 
         if reduceMotion {
-            manager.removeItem(id: item.id)
+            onRemove(item.id)
             return
         }
 
@@ -305,7 +315,7 @@ struct QuickAccessCardView: View {
         dismissTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 110_000_000)
             guard !Task.isCancelled else { return }
-            manager.removeItem(id: item.id)
+            onRemove(item.id)
         }
     }
 
@@ -357,7 +367,7 @@ struct QuickAccessCardView: View {
     private var topControls: some View {
         HStack(alignment: .center) {
             Button {
-                manager.removeItem(id: item.id)
+                onRemove(item.id)
             } label: {
                 Image(systemName: item.state == .processing ? "stop.fill" : "xmark")
                     .font(.system(size: QuickAccessLayout.closeButtonIconSize, weight: .semibold))
@@ -550,6 +560,26 @@ private struct ProgressBar: View {
     private func filledWidth(in totalWidth: CGFloat) -> CGFloat {
         let value = progress.map { min(max($0, 0.05), 1) } ?? phase
         return totalWidth * value
+    }
+}
+
+private extension QuickAccessItem {
+    func rendersSameQuickAccessCard(as other: QuickAccessItem) -> Bool {
+        id == other.id
+            && sourceURL == other.sourceURL
+            && kind == other.kind
+            && thumbnail === other.thumbnail
+            && originalBytes == other.originalBytes
+            && mediaDuration == other.mediaDuration
+            && state == other.state
+            && elapsed == other.elapsed
+            && progress == other.progress
+            && optimizedBytes == other.optimizedBytes
+            && outputURL == other.outputURL
+            && pixelSize == other.pixelSize
+            && failureMessage == other.failureMessage
+            && activeOperationName == other.activeOperationName
+            && activeConversionTarget == other.activeConversionTarget
     }
 }
 

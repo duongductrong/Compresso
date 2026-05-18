@@ -8,90 +8,67 @@ struct OutputSettingsView: View {
     @State private var temporaryRetentionDays = OptimizationOutputSettings.temporaryRetentionDays
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Text("Output")
-                    .font(.headline)
-
-                Spacer()
-
-                Toggle("Save location", isOn: saveLocationBinding)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-            }
-
-            HStack(spacing: 10) {
-                Image(systemName: saveLocationEnabled ? "folder.fill" : "clock.arrow.circlepath")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(saveLocationEnabled ? .blue : .orange)
-                    .frame(width: 30, height: 30)
-                    .background(
-                        (saveLocationEnabled ? Color.blue : Color.orange).opacity(0.12),
-                        in: RoundedRectangle(cornerRadius: 8)
-                    )
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(destinationName)
-                        .font(.system(size: 13, weight: .semibold))
-                        .lineLimit(1)
-
-                    Text(destinationPath)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-
-                if saveLocationEnabled {
-                    Spacer(minLength: 6)
-
-                    Button {
-                        chooseOutputDirectory()
-                    } label: {
-                        Image(systemName: "folder.badge.gearshape")
-                    }
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.borderless)
-                    .help("Choose output folder")
-                }
-            }
-
-            if !saveLocationEnabled {
-                Stepper(
-                    value: retentionBinding,
-                    in: OptimizationOutputSettings.allowedTemporaryRetentionDays
+        DroplitSettingsPage(
+            title: DroplitSettingsSection.output.title,
+            subtitle: "Choose where optimized files are saved and how temporary results are retained."
+        ) {
+            DroplitSettingsGroup(
+                "Storage",
+                description: "Pick a permanent folder or let Droplit manage temporary outputs."
+            ) {
+                DroplitSettingsControlRow(
+                    title: "Save Location",
+                    subtitle: saveLocationEnabled ? "Keep optimized files in a selected folder" : "Use app-managed temporary storage"
                 ) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "timer")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.purple)
-                            .frame(width: 30, height: 30)
-                            .background(.purple.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                    Toggle("", isOn: saveLocationBinding)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Delete after")
-                                .font(.system(size: 13, weight: .semibold))
-                                .lineLimit(1)
+                DroplitSettingsDivider()
+                DroplitSettingsControlRow(
+                    title: saveLocationEnabled ? "Destination Folder" : "Temporary Storage",
+                    subtitle: destinationDescription
+                ) {
+                    if saveLocationEnabled {
+                        Button("Choose...") {
+                            chooseOutputDirectory()
+                        }
+                        .controlSize(.small)
+                    } else {
+                        Text("Managed by Droplit")
+                            .foregroundStyle(.secondary)
+                    }
+                }
 
-                            Text(retentionText)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                if !saveLocationEnabled {
+                    DroplitSettingsDivider()
+                    DroplitSettingsControlRow(
+                        title: "Delete After",
+                        subtitle: retentionText
+                    ) {
+                        retentionStepper
+                    }
+                }
+            }
+
+            DroplitSettingsGroup(
+                "Conversion",
+                description: "Control whether a format conversion replaces the source or creates a second file."
+            ) {
+                DroplitSettingsControlRow(
+                    title: "On Conversion",
+                    subtitle: quickAccess.conversionOutputMode.displayName
+                ) {
+                    DroplitSettingsMenuPicker(selection: $quickAccess.conversionOutputMode) {
+                        ForEach(ConversionOutputMode.allCases) { mode in
+                            Text(mode.displayName)
+                                .tag(mode)
                         }
                     }
                 }
             }
-
-            Picker("On conversion", selection: $quickAccess.conversionOutputMode) {
-                ForEach(ConversionOutputMode.allCases) { mode in
-                    Label(mode.displayName, systemImage: mode.systemImage)
-                        .tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
         }
-        .padding(10)
-        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 8))
         .onAppear {
             refreshState()
         }
@@ -126,7 +103,7 @@ struct OutputSettingsView: View {
         if saveLocationEnabled {
             return OptimizationOutputSettings.displayName(for: outputDirectory)
         }
-        return "Temporary storage"
+        return "Temporary Storage"
     }
 
     private var destinationPath: String {
@@ -136,8 +113,28 @@ struct OutputSettingsView: View {
         return OptimizationTemporaryFileStore.outputDirectory.path
     }
 
+    private var destinationDescription: String {
+        "\(destinationName)\n\(destinationPath)"
+    }
+
     private var retentionText: String {
         temporaryRetentionDays == 1 ? "1 day" : "\(temporaryRetentionDays) days"
+    }
+
+    private var retentionStepper: some View {
+        HStack(spacing: 10) {
+            Text(retentionText)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 62, alignment: .trailing)
+
+            Stepper(
+                "",
+                value: retentionBinding,
+                in: OptimizationOutputSettings.allowedTemporaryRetentionDays
+            )
+            .labelsHidden()
+        }
     }
 
     private func refreshState() {

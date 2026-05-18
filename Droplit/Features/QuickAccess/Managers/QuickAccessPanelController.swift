@@ -7,6 +7,7 @@ final class QuickAccessPanelController {
     private var position: QuickAccessPosition = .bottomRight
     private let padding: CGFloat = 22
     private var isAnimating = false
+    private var activeContentHeight: CGFloat = 0
 
     private var reduceMotion: Bool {
         NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -14,9 +15,15 @@ final class QuickAccessPanelController {
 
     var isVisible: Bool { panel != nil }
 
-    func show<Content: View>(_ content: Content, size: CGSize, position: QuickAccessPosition) {
+    func show<Content: View>(
+        _ content: Content,
+        size: CGSize,
+        position: QuickAccessPosition,
+        activeContentHeight: CGFloat
+    ) {
         guard !isAnimating else { return }
         self.position = position
+        self.activeContentHeight = activeContentHeight
 
         let screen = ScreenUtility.activeScreen()
         let targetOrigin = position.calculateOrigin(for: size, on: screen, padding: padding)
@@ -26,6 +33,7 @@ final class QuickAccessPanelController {
         let hostingView = NSHostingView(rootView: content)
         hostingView.frame = NSRect(origin: .zero, size: size)
         panel.contentView = hostingView
+        panel.updatePassthroughRegion(activeContentHeight: activeContentHeight, edge: position.edge)
         self.panel = panel
 
         if reduceMotion {
@@ -49,6 +57,10 @@ final class QuickAccessPanelController {
                 panel.animator().setFrame(targetFrame, display: true)
             }, completionHandler: { [weak self] in
                 MainActor.assumeIsolated {
+                    panel.updatePassthroughRegion(
+                        activeContentHeight: self?.activeContentHeight ?? 0,
+                        edge: self?.position.edge ?? .bottom
+                    )
                     self?.isAnimating = false
                 }
             })
@@ -57,6 +69,7 @@ final class QuickAccessPanelController {
 
     func updatePosition(_ newPosition: QuickAccessPosition) {
         position = newPosition
+        panel?.updatePassthroughRegion(activeContentHeight: activeContentHeight, edge: newPosition.edge)
         repositionPanel()
     }
 
@@ -64,7 +77,16 @@ final class QuickAccessPanelController {
         guard let panel, !isAnimating else { return }
         let screen = ScreenUtility.activeScreen()
         let origin = position.calculateOrigin(for: size, on: screen, padding: padding)
-        panel.setFrame(NSRect(origin: origin, size: size), display: true, animate: false)
+        let targetFrame = NSRect(origin: origin, size: size)
+        if panel.frame != targetFrame {
+            panel.setFrame(targetFrame, display: true, animate: false)
+        }
+        panel.updatePassthroughRegion(activeContentHeight: activeContentHeight, edge: position.edge)
+    }
+
+    func updateInteractionMetrics(activeContentHeight: CGFloat) {
+        self.activeContentHeight = activeContentHeight
+        panel?.updatePassthroughRegion(activeContentHeight: activeContentHeight, edge: position.edge)
     }
 
     func hide() {
@@ -108,12 +130,20 @@ final class QuickAccessPanelController {
 
         if reduceMotion {
             panel.setFrameOrigin(origin)
+            panel.updatePassthroughRegion(activeContentHeight: activeContentHeight, edge: position.edge)
         } else {
-            NSAnimationContext.runAnimationGroup { context in
+            NSAnimationContext.runAnimationGroup({ context in
                 context.duration = 0.25
                 context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
                 panel.animator().setFrameOrigin(origin)
-            }
+            }, completionHandler: { [weak self] in
+                MainActor.assumeIsolated {
+                    panel.updatePassthroughRegion(
+                        activeContentHeight: self?.activeContentHeight ?? 0,
+                        edge: self?.position.edge ?? .bottom
+                    )
+                }
+            })
         }
     }
 }

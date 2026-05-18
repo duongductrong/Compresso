@@ -3,6 +3,21 @@
 Droplit uses native macOS visual language: system materials, semantic colors,
 compact controls, and rounded utility surfaces.
 
+## Main Settings Window
+
+The main configuration surface follows the macOS System Settings pattern:
+
+- fixed launch content size: 920 x 680
+- root layout: `NavigationSplitView` with `.balanced` style
+- sidebar width: 220 minimum, 250 ideal, 280 maximum
+- search field: system `searchable(... placement: .sidebar)` field, no custom chrome
+- selected sidebar row: native source-list highlight and vibrancy
+- detail content width: 760 maximum, 32 horizontal inset, top-safe-area underlap, 22 bottom inset
+- detail typography: title heading, compact callout subtitle, semantic secondary text
+- settings groups: `GroupBox` sections with standard material fill, 16-point horizontal inset, and balanced vertical spacing
+- settings rows: fixed leading label column plus trailing value/action or menu picker column, plain button rows for navigation
+- deployment target: macOS 15.0; the split view relies on current SwiftUI desktop behavior
+
 ## Color
 
 | Token | Value | Usage |
@@ -79,6 +94,12 @@ compact controls, and rounded utility surfaces.
 
 ## Implementation Map
 
+- main settings shell lives in `ContentView` and uses `NavigationSplitView`
+- sidebar only lists top-level destinations; storage, conversion, and concurrency are surfaced from detail pages instead of duplicate source-list entries
+- sidebar search is attached at the split-view level with `.searchable(... placement: .sidebar)`
+- sidebar rows stay flat and Mail-like: one SF Symbol, one title line, one optional secondary line
+- detail pages use `DroplitSettingsPage` for heading plus scroll layout
+- grouped settings content uses `DroplitSettingsGroup`, `DroplitSettingsControlRow`, `DroplitSettingsValueRow`, `DroplitSettingsMenuPicker`, and a shared aligned-row layout
 - Quick Access dimensions live in `QuickAccessLayout`.
 - Quick Access shadow allowance lives in `QuickAccessLayout.shadowMargin`.
 - Quick Access card shadows use `quickAccessCardShadow(isRaised:)`.

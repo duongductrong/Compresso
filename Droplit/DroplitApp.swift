@@ -12,14 +12,13 @@ struct DroplitApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup("Droplit", id: "main") {
             ContentView()
+                .toolbar(removing: .title)
         }
+        .defaultSize(width: 920, height: 680)
+        .defaultLaunchBehavior(.presented)
         .windowResizability(.contentSize)
-
-        Settings {
-            EmptyView()
-                .frame(width: 0, height: 0)
-        }
+        .windowToolbarStyle(.unifiedCompact)
     }
 }

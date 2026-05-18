@@ -253,6 +253,15 @@ nonisolated enum QuickAccessLayout {
             + (containerPadding * 2)
         return CGSize(width: cardWidth + containerPadding * 2, height: height)
     }
+
+    static func fixedPanelSize(includesDropPlaceholder: Bool) -> CGSize {
+        panelSize(
+            itemCardCount: maximumFloatingItems,
+            conversionActionRowCount: maximumFloatingItems,
+            dropPlaceholderCount: includesDropPlaceholder ? 1 : 0,
+            includesOverflowCard: true
+        )
+    }
 }
 
 nonisolated enum QuickAccessJobState: Equatable {

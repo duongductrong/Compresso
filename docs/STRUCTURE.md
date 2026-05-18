@@ -37,6 +37,17 @@ Droplit/
     OutputSettings/
       OutputSettingsView.swift
 
+    Settings/
+      DroplitSettingsDetailView.swift
+      DroplitSettingsSection.swift
+      DroplitSettingsSharedViews.swift
+      DroplitSettingsSidebarView.swift
+      GeneralSettingsView.swift
+      InfoSettingsView.swift
+      QueueSettingsView.swift
+      QuickAccessSettingsView.swift
+      ToolsSettingsView.swift
+
     QuickAccess/
       Components/
         QuickAccessCardView.swift
@@ -84,6 +95,7 @@ docs/
 | Path | Owns |
 | --- | --- |
 | `App/` | App lifecycle and launch-time service bootstrap |
+| `Features/Settings/` | Main System Settings-style configuration shell, sidebar, detail pages, shared grouped rows |
 | `Features/OutputSettings/` | Output destination toggle, folder picker, temp retention controls |
 | `Features/QuickAccess/` | Floating stack, placeholder card, drag/drop, card visuals, trigger detection |
 | `Services/Optimization/` | Local CLI tool resolution, Homebrew bootstrap, output destination resolution, temp cleanup, optimizer process execution |
@@ -127,9 +139,23 @@ docs/
 Output destination and retention are changed from main window Output configuration.
 Parallel job count is changed from main window Concurrency configuration.
 
+## Settings UI
+
+1. `ContentView` owns the main configuration window shell, `NavigationSplitView`, search state, and file importer.
+2. `DroplitSettingsSidebarView` renders the native source-list sidebar and relies on split-view `searchable` for filtering.
+3. `DroplitSettingsDetailView` switches between detail pages based on `DroplitSettingsSection`.
+4. `DroplitSettingsPage` provides the shared heading plus scroll layout for every detail page.
+5. `DroplitSettingsGroup`, `DroplitSettingsControlRow`, `DroplitSettingsValueRow`, and `DroplitSettingsAlignedRow` provide the shared native settings row treatment.
+6. `GeneralSettingsView` is the default landing page and links into feature-specific settings.
+7. `QuickAccessSettingsView` owns Quick Access trigger, placement, preview, and concurrency controls.
+8. `OutputSettingsView` owns save location, destination folder, temp retention, and conversion output behavior.
+9. `ToolsSettingsView` owns optimizer status and Homebrew install action.
+10. `QueueSettingsView` owns visible queue status, remove actions, and file import entry point.
+11. `InfoSettingsView` owns lightweight appearance, privacy, advanced, and about details.
+
 ## Homebrew Bootstrap Flow
 
-1. `ContentView` renders optimizer availability from `OptimizationTool.catalog`.
+1. `ToolsSettingsView` renders optimizer availability from `OptimizationTool.catalog`.
 2. `HomebrewBootstrapService` checks for `brew` in the local tool search paths.
 3. If tools are missing, the Tools panel install action runs:
 

@@ -579,19 +579,17 @@ final class QuickAccessManager: ObservableObject {
             return
         }
 
-        let size = QuickAccessLayout.panelSize(
-            itemCardCount: floatingItemCount,
-            conversionActionRowCount: floatingConversionActionRowCount,
-            dropPlaceholderCount: isDropPlaceholderVisible ? 1 : 0,
-            includesOverflowCard: hasOverflowCard
-        )
+        let size = fixedPanelSize
+        let activeHeight = activeContentHeight
         if panelController.isVisible {
+            panelController.updateInteractionMetrics(activeContentHeight: activeHeight)
             panelController.updateSize(size)
         } else {
             panelController.show(
                 QuickAccessStackView(manager: self),
                 size: size,
-                position: position
+                position: position,
+                activeContentHeight: activeHeight
             )
         }
     }
@@ -611,6 +609,20 @@ final class QuickAccessManager: ObservableObject {
 
     private var overflowCardCount: Int {
         hasOverflowCard ? 1 : 0
+    }
+
+    private var activeContentHeight: CGFloat {
+        let contentSize = QuickAccessLayout.panelSize(
+            itemCardCount: floatingItemCount,
+            conversionActionRowCount: floatingConversionActionRowCount,
+            dropPlaceholderCount: isDropPlaceholderVisible ? 1 : 0,
+            includesOverflowCard: hasOverflowCard
+        )
+        return min(contentSize.height, fixedPanelSize.height)
+    }
+
+    private var fixedPanelSize: CGSize {
+        QuickAccessLayout.fixedPanelSize(includesDropPlaceholder: isDropPlaceholderVisible)
     }
 
     private static func clampConcurrency(_ value: Int) -> Int {
