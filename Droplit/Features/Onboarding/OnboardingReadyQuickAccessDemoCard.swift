@@ -37,7 +37,7 @@ struct OnboardingQuickAccessDemoCard: View {
 
     private var background: some View {
         ZStack {
-            cardShape.fill(.ultraThinMaterial)
+            DroplitMaterialFill(shape: cardShape, kind: .ultraThin, fallbackOpacity: 0.72)
             cardShape.fill(Color.primary.opacity(backgroundOpacity))
         }
         .overlay(cardShape.strokeBorder(Color.primary.opacity(borderOpacity), lineWidth: isTargeted ? 1.2 : 1))
@@ -45,13 +45,12 @@ struct OnboardingQuickAccessDemoCard: View {
 
     private var topControls: some View {
         HStack {
-            Circle()
-                .fill(.regularMaterial)
+            DroplitMaterialFill(shape: Circle(), kind: .regular, fallbackOpacity: 0.9)
                 .frame(width: QuickAccessLayout.closeButtonVisualSize, height: QuickAccessLayout.closeButtonVisualSize)
                 .overlay(
                     Image(systemName: isProcessing ? "stop.fill" : "xmark")
                         .font(.system(size: QuickAccessLayout.closeButtonIconSize, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(.secondary)
                 )
                 .overlay(Circle().strokeBorder(Color.primary.opacity(0.12), lineWidth: 1))
             Spacer()
@@ -61,9 +60,9 @@ struct OnboardingQuickAccessDemoCard: View {
                 }
             }
             .font(.system(size: 8, weight: .semibold))
-            .foregroundStyle(.secondary)
+            .foregroundColor(.secondary)
             .frame(width: QuickAccessLayout.kindBadgeWidth + 12, height: QuickAccessLayout.kindBadgeHeight)
-            .background(.regularMaterial, in: kindBadgeShape)
+            .droplitMaterialBackground(.regular, in: kindBadgeShape)
             .overlay(kindBadgeShape.strokeBorder(Color.primary.opacity(0.12), lineWidth: 1))
         }
         .padding(.horizontal, QuickAccessLayout.topControlHorizontalPadding)
@@ -74,9 +73,9 @@ struct OnboardingQuickAccessDemoCard: View {
         VStack(alignment: .leading, spacing: 10) {
             Image(systemName: isTargeted ? "tray.full.fill" : "tray.and.arrow.down.fill")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(isTargeted ? .primary : .secondary)
+                .foregroundColor(isTargeted ? .primary : .secondary)
                 .frame(width: 34, height: 28)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .droplitMaterialBackground(.regular, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.primary.opacity(0.10), lineWidth: 1))
             VStack(alignment: .leading, spacing: 4) {
                 Text(isTargeted ? "Release to optimize" : "Drop to optimize")
@@ -85,7 +84,7 @@ struct OnboardingQuickAccessDemoCard: View {
                     .minimumScaleFactor(0.76)
                 Text("Images and videos")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -97,7 +96,7 @@ struct OnboardingQuickAccessDemoCard: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
                 .lineLimit(1)
             Text("Optimizing")
                 .font(.system(size: 13, weight: .semibold))
@@ -111,8 +110,8 @@ struct OnboardingQuickAccessDemoCard: View {
             .frame(height: 2.5)
             Text(elapsedText)
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
+                .foregroundColor(.secondary)
+                .droplitMonospacedDigit()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)

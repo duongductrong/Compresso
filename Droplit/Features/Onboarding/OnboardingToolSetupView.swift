@@ -24,7 +24,7 @@ struct OnboardingToolSetupView: View {
             dependencyList
         }
         .frame(maxWidth: .infinity)
-        .onChange(of: installRequestID) { _, _ in
+        .onChange(of: installRequestID) { _ in
             Task {
                 await installMissingTools()
             }
@@ -72,12 +72,12 @@ struct OnboardingToolSetupView: View {
             VStack(spacing: 5) {
                 Text(progressPrimaryText)
                     .font(.system(size: progressPrimaryFontSize, weight: .semibold, design: .rounded))
-                    .foregroundStyle(progressPrimaryColor)
-                    .monospacedDigit()
+                    .foregroundColor(progressPrimaryColor)
+                    .droplitMonospacedDigit()
 
                 Text(progressSecondaryText)
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .minimumScaleFactor(0.72)
@@ -98,7 +98,7 @@ struct OnboardingToolSetupView: View {
         VStack(spacing: 8) {
             Text(message ?? statusSubtitle)
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -123,7 +123,7 @@ struct OnboardingToolSetupView: View {
 
             Text("You can also install the linked dependencies yourself, then refresh.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -132,6 +132,7 @@ struct OnboardingToolSetupView: View {
     private var dependencyList: some View {
         Text(dependencyParagraph)
             .font(.callout)
+            .foregroundColor(.secondary)
             .multilineTextAlignment(.center)
             .lineSpacing(3)
             .fixedSize(horizontal: false, vertical: true)
@@ -245,31 +246,23 @@ struct OnboardingToolSetupView: View {
         }
     }
 
-    private var dependencyParagraph: AttributedString {
-        var paragraph = dependencyText("Droplit uses ")
-
-        for (index, tool) in OptimizationTool.catalog.enumerated() {
-            var link = AttributedString(tool.name)
-            link.link = tool.projectURL
-            link.foregroundColor = .accentColor
-
-            paragraph += link
-
-            if index < OptimizationTool.catalog.count - 2 {
-                paragraph += dependencyText(", ")
-            } else if index == OptimizationTool.catalog.count - 2 {
-                paragraph += dependencyText(", and ")
-            }
-        }
-
-        paragraph += dependencyText(" to optimize media locally.")
-        return paragraph
+    private var dependencyParagraph: String {
+        let names = OptimizationTool.catalog.map(\.name)
+        return "Droplit uses \(formattedToolList(names)) to optimize media locally."
     }
 
-    private func dependencyText(_ text: String) -> AttributedString {
-        var string = AttributedString(text)
-        string.foregroundColor = .secondary
-        return string
+    private func formattedToolList(_ names: [String]) -> String {
+        switch names.count {
+        case 0:
+            return "local tools"
+        case 1:
+            return names[0]
+        case 2:
+            return "\(names[0]) and \(names[1])"
+        default:
+            let leadingNames = names.dropLast().joined(separator: ", ")
+            return "\(leadingNames), and \(names[names.count - 1])"
+        }
     }
 
     @MainActor
@@ -352,7 +345,7 @@ private struct OnboardingPointingHandCursorModifier: ViewModifier {
                     pop()
                 }
             }
-            .onChange(of: isEnabled) { _, newValue in
+            .onChange(of: isEnabled) { newValue in
                 if newValue {
                     return
                 }

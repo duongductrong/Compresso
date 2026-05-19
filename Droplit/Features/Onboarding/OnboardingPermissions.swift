@@ -29,7 +29,7 @@ struct OnboardingPermissionsView: View {
                 HStack(alignment: .center, spacing: 12) {
                     Image(systemName: requirement.systemImage)
                         .font(.title3)
-                        .foregroundStyle(.secondary)
+                        .foregroundColor(.secondary)
                         .frame(width: 28)
 
                     VStack(alignment: .leading, spacing: 3) {
@@ -38,7 +38,7 @@ struct OnboardingPermissionsView: View {
 
                         Text(requirement.subtitle)
                             .font(.callout)
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
@@ -46,7 +46,7 @@ struct OnboardingPermissionsView: View {
 
                     if requirement.isGranted() {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
+                            .foregroundColor(.green)
                             .help("Granted")
                     } else {
                         Button("Open Settings") {

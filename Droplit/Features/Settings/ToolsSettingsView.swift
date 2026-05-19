@@ -46,7 +46,7 @@ struct ToolsSettingsView: View {
         } else if missingTools.isEmpty {
             Image(systemName: "checkmark.circle.fill")
                 .font(.body.weight(.semibold))
-                .foregroundStyle(.green)
+                .foregroundColor(.green)
                 .help("All dependencies ready")
         } else {
             Button("Install") {

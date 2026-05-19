@@ -36,7 +36,7 @@ struct OutputSettingsView: View {
                         }
                     } else {
                         Text("Managed by Droplit")
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(.secondary)
                     }
                 }
 
@@ -123,8 +123,8 @@ struct OutputSettingsView: View {
     private var retentionStepper: some View {
         HStack(spacing: 10) {
             Text(retentionText)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .droplitMonospacedDigit()
+                .foregroundColor(.secondary)
                 .frame(minWidth: 62, alignment: .trailing)
 
             Stepper(

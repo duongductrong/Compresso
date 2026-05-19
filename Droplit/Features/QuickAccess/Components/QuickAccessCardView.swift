@@ -135,7 +135,7 @@ struct QuickAccessCardView: View, Equatable {
 
                 Text(target.displayName)
                     .font(.system(size: QuickAccessLayout.conversionActionFontSize, weight: .bold, design: .rounded))
-                    .foregroundStyle(conversionButtonForeground(isActive: isActive))
+                    .foregroundColor(conversionButtonForeground(isActive: isActive))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     .frame(maxWidth: .infinity)
@@ -173,8 +173,12 @@ struct QuickAccessCardView: View, Equatable {
         return item.state == .processing ? .secondary : .primary
     }
 
-    private func conversionButtonBackground(isActive: Bool) -> some ShapeStyle {
-        isActive ? AnyShapeStyle(Self.accentColor) : AnyShapeStyle(item.state == .processing ? .thinMaterial : .regularMaterial)
+    private func conversionButtonBackground(isActive: Bool) -> Color {
+        if isActive {
+            return Self.accentColor
+        }
+
+        return DroplitCompatibility.controlFallbackColor.opacity(item.state == .processing ? 0.54 : 0.86)
     }
 
     private func conversionButtonBorder(isActive: Bool) -> Color {
@@ -182,7 +186,7 @@ struct QuickAccessCardView: View, Equatable {
     }
 
     private static var accentColor: Color {
-        Color(nsColor: accentNSColor)
+        Color(accentNSColor)
     }
 
     private static var accentNSColor: NSColor {
@@ -327,7 +331,7 @@ struct QuickAccessCardView: View, Equatable {
             .clipped()
             .saturation(0.72)
             .brightness(-0.04)
-            .overlay(.black.opacity(item.state == .processing || item.state == .queued ? 0.34 : 0.20))
+            .overlay(Color.black.opacity(item.state == .processing || item.state == .queued ? 0.34 : 0.20))
     }
 
     private var readabilityOverlay: some View {
@@ -371,12 +375,12 @@ struct QuickAccessCardView: View, Equatable {
             } label: {
                 Image(systemName: item.state == .processing ? "stop.fill" : "xmark")
                     .font(.system(size: QuickAccessLayout.closeButtonIconSize, weight: .semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundColor(.primary)
                     .frame(
                         width: QuickAccessLayout.closeButtonVisualSize,
                         height: QuickAccessLayout.closeButtonVisualSize
                     )
-                    .background(.regularMaterial, in: Circle())
+                    .droplitMaterialBackground(.regular, in: Circle())
                     .overlay(Circle().stroke(.white.opacity(0.24), lineWidth: 1))
                     .frame(
                         width: QuickAccessLayout.closeButtonHitSize,
@@ -393,13 +397,13 @@ struct QuickAccessCardView: View, Equatable {
 
             Image(systemName: item.kind.systemImage)
                 .font(.system(size: QuickAccessLayout.kindBadgeIconSize, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
                 .frame(
                     width: QuickAccessLayout.kindBadgeWidth,
                     height: QuickAccessLayout.kindBadgeHeight
                 )
-                .background(
-                    .regularMaterial,
+                .droplitMaterialBackground(
+                    .regular,
                     in: RoundedRectangle(cornerRadius: QuickAccessLayout.kindBadgeCornerRadius, style: .continuous)
                 )
                 .overlay(
@@ -415,13 +419,13 @@ struct QuickAccessCardView: View, Equatable {
         VStack(alignment: .leading, spacing: 4) {
             Text(item.displayTitle)
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.white.opacity(0.82))
+                .foregroundColor(.white.opacity(0.82))
                 .lineLimit(1)
                 .truncationMode(.middle)
 
             Text(item.activeOperationName)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
                 .lineLimit(1)
 
             ProgressBar(progress: displayProgress)
@@ -429,8 +433,8 @@ struct QuickAccessCardView: View, Equatable {
 
             Text(processingTimeText)
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.86))
-                .monospacedDigit()
+                .foregroundColor(.white.opacity(0.86))
+                .droplitMonospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
         }
@@ -443,13 +447,13 @@ struct QuickAccessCardView: View, Equatable {
         VStack(alignment: .leading, spacing: 4) {
             Text(item.displayTitle)
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.white.opacity(0.82))
+                .foregroundColor(.white.opacity(0.82))
                 .lineLimit(1)
                 .truncationMode(.middle)
 
             Text("Queued")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
                 .lineLimit(1)
 
             HStack(spacing: 6) {
@@ -458,7 +462,7 @@ struct QuickAccessCardView: View, Equatable {
                 Text(item.originalSizeText)
             }
             .font(.system(size: 11, weight: .semibold, design: .rounded))
-            .foregroundStyle(.white.opacity(0.86))
+            .foregroundColor(.white.opacity(0.86))
             .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -470,7 +474,7 @@ struct QuickAccessCardView: View, Equatable {
         VStack(alignment: .leading, spacing: 4) {
             Text("Done")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
                 .lineLimit(1)
 
             HStack(spacing: 6) {
@@ -480,15 +484,15 @@ struct QuickAccessCardView: View, Equatable {
                 Text(item.optimizedSizeText)
             }
             .font(.system(size: 11, weight: .semibold, design: .rounded))
-            .foregroundStyle(.white.opacity(0.88))
-            .monospacedDigit()
+            .foregroundColor(.white.opacity(0.88))
+            .droplitMonospacedDigit()
             .lineLimit(1)
             .minimumScaleFactor(0.72)
 
             Text(item.dimensionsText)
                 .font(.system(size: 9, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.72))
-                .monospacedDigit()
+                .foregroundColor(.white.opacity(0.72))
+                .droplitMonospacedDigit()
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -500,12 +504,12 @@ struct QuickAccessCardView: View, Equatable {
         VStack(alignment: .leading, spacing: 4) {
             Text("Failed")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
                 .lineLimit(1)
 
             Text(item.failureMessage ?? "Optimizer unavailable")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.white.opacity(0.74))
+                .foregroundColor(.white.opacity(0.74))
                 .lineLimit(2)
                 .minimumScaleFactor(0.72)
         }

@@ -189,7 +189,7 @@ private struct QuickAccessOverflowCardView: View, Equatable {
         }
         .frame(width: QuickAccessLayout.cardWidth, height: QuickAccessLayout.overflowCardHeight)
         .clipped()
-        .overlay(.black.opacity(0.22))
+        .overlay(Color.black.opacity(0.22))
     }
 
     private var readabilityOverlay: some View {
@@ -208,9 +208,9 @@ private struct QuickAccessOverflowCardView: View, Equatable {
         HStack(alignment: .top) {
             Image(systemName: "square.stack.3d.up.fill")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
                 .frame(width: 28, height: 20)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .droplitMaterialBackground(.regular, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .stroke(.white.opacity(0.20), lineWidth: 1)
@@ -220,12 +220,12 @@ private struct QuickAccessOverflowCardView: View, Equatable {
 
             Text("+\(summary.hiddenCount)")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(.primary)
-                .monospacedDigit()
+                .foregroundColor(.primary)
+                .droplitMonospacedDigit()
                 .frame(minWidth: 28)
                 .frame(height: 20)
                 .padding(.horizontal, 4)
-                .background(.regularMaterial, in: Capsule())
+                .droplitMaterialBackground(.regular, in: Capsule())
                 .overlay(Capsule().stroke(.white.opacity(0.20), lineWidth: 1))
         }
         .padding(.horizontal, 7)
@@ -236,17 +236,17 @@ private struct QuickAccessOverflowCardView: View, Equatable {
         VStack(alignment: .leading, spacing: 4) {
             Text("\(summary.hiddenCount) hidden")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.white.opacity(0.82))
+                .foregroundColor(.white.opacity(0.82))
                 .lineLimit(1)
 
             Text("Stacked items")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundColor(.white)
                 .lineLimit(1)
 
             Text(summaryText)
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.86))
+                .foregroundColor(.white.opacity(0.86))
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
         }

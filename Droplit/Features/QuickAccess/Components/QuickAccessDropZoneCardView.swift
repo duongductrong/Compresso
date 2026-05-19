@@ -18,13 +18,13 @@ struct QuickAccessDropZoneCardView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(isTargeted ? "Release to optimize" : "Drop to optimize")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.primary)
+                            .foregroundColor(.primary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.72)
 
                         Text(isTargeted ? "Droplit starts working here" : "Pinned here while Droplit works")
                             .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(.secondary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.72)
                     }
@@ -52,8 +52,7 @@ struct QuickAccessDropZoneCardView: View {
 
     private var cardBackground: some View {
         ZStack {
-            cardShape
-                .fill(.ultraThinMaterial)
+            DroplitMaterialFill(shape: cardShape, kind: .ultraThin, fallbackOpacity: 0.72)
 
             cardShape
                 .fill(.white.opacity(isTargeted ? 0.11 : 0.06))
@@ -64,9 +63,9 @@ struct QuickAccessDropZoneCardView: View {
     private var dropGlyph: some View {
         Image(systemName: isTargeted ? "tray.full.fill" : "tray.and.arrow.down.fill")
             .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(isTargeted ? .primary : .secondary)
+            .foregroundColor(isTargeted ? .primary : .secondary)
             .frame(width: 34, height: 28)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .droplitMaterialBackground(.regular, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .stroke(.white.opacity(isTargeted ? 0.22 : 0.14), lineWidth: 1)

@@ -73,34 +73,33 @@ enum QuickAccessThumbnailGenerator {
     }
 
     private static func generateVideoThumbnail(from url: URL) async -> QuickAccessThumbnailResult {
-        let asset = AVURLAsset(url: url)
-        let duration: TimeInterval?
-        do {
-            let loadedDuration = try await asset.load(.duration)
-            let durationSeconds = CMTimeGetSeconds(loadedDuration)
-            duration = durationSeconds.isFinite ? durationSeconds : nil
-        } catch {
-            duration = nil
-        }
+        await generateOffMain {
+            let asset = AVURLAsset(url: url)
+            let durationSeconds = CMTimeGetSeconds(asset.duration)
+            let duration = durationSeconds.isFinite ? durationSeconds : nil
 
-        let generator = AVAssetImageGenerator(asset: asset)
-        generator.appliesPreferredTrackTransform = true
-        generator.maximumSize = CGSize(width: 640, height: 360)
+            let generator = AVAssetImageGenerator(asset: asset)
+            generator.appliesPreferredTrackTransform = true
+            generator.maximumSize = CGSize(width: 640, height: 360)
 
-        do {
-            let (cgImage, _) = try await generator.image(at: CMTime(seconds: 0.1, preferredTimescale: 600))
-            let image = NSImage(cgImage: cgImage, size: .zero)
-            return QuickAccessThumbnailResult(
-                image: image.scaledToFit(maxDimension: 320),
-                pixelSize: CGSize(width: cgImage.width, height: cgImage.height),
-                duration: duration
-            )
-        } catch {
-            return QuickAccessThumbnailResult(
-                image: placeholderThumbnail(systemImage: "video.fill"),
-                pixelSize: nil,
-                duration: duration
-            )
+            do {
+                let cgImage = try generator.copyCGImage(
+                    at: CMTime(seconds: 0.1, preferredTimescale: 600),
+                    actualTime: nil
+                )
+                let image = NSImage(cgImage: cgImage, size: .zero)
+                return QuickAccessThumbnailResult(
+                    image: image.scaledToFit(maxDimension: 320),
+                    pixelSize: CGSize(width: cgImage.width, height: cgImage.height),
+                    duration: duration
+                )
+            } catch {
+                return QuickAccessThumbnailResult(
+                    image: placeholderThumbnail(systemImage: "video.fill"),
+                    pixelSize: nil,
+                    duration: duration
+                )
+            }
         }
     }
 

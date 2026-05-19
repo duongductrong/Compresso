@@ -106,8 +106,8 @@ struct QuickAccessSettingsView: View {
     private var holdDelayStepper: some View {
         HStack(spacing: 10) {
             Text(holdTriggerDurationText)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .droplitMonospacedDigit()
+                .foregroundColor(.secondary)
                 .frame(minWidth: 82, alignment: .trailing)
 
             Stepper(
@@ -122,9 +122,9 @@ struct QuickAccessSettingsView: View {
 
     private var concurrencyStepper: some View {
         HStack(spacing: 10) {
-            Text(quickAccess.maximumConcurrentOptimizations.formatted())
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
+            Text("\(quickAccess.maximumConcurrentOptimizations)")
+                .droplitMonospacedDigit()
+                .foregroundColor(.secondary)
                 .frame(minWidth: 20, alignment: .trailing)
 
             Stepper("", value: concurrencyBinding, in: 1...12)

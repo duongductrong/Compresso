@@ -13,29 +13,25 @@ struct ContentView: View {
     @State private var selectedSection: DroplitSettingsSection? = .about
     @State private var searchText = ""
     @State private var isImporting = false
-    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            DroplitSettingsSidebarView(
-                selection: $selectedSection,
-                searchText: $searchText,
-                toggleSidebar: toggleSidebar
-            )
-        } detail: {
-            ZStack(alignment: .topLeading) {
-                DroplitSettingsDetailView(
-                    selection: selectedSectionBinding,
+        Group {
+            if #available(macOS 13.0, *) {
+                DroplitModernSettingsRoot(
                     quickAccess: quickAccess,
+                    selectedSection: $selectedSection,
+                    selectedDetailSection: selectedSectionBinding,
+                    searchText: $searchText,
                     isImporting: $isImporting
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            }
-        }
-        .navigationSplitViewStyle(.balanced)
-        .overlay(alignment: .topLeading) {
-            if columnVisibility == .detailOnly {
-                collapsedSidebarChromeOverlay
+            } else {
+                DroplitLegacySettingsRoot(
+                    quickAccess: quickAccess,
+                    selectedSection: $selectedSection,
+                    selectedDetailSection: selectedSectionBinding,
+                    searchText: $searchText,
+                    isImporting: $isImporting
+                )
             }
         }
         .fileImporter(
@@ -59,8 +55,42 @@ struct ContentView: View {
         )
     }
 
+}
+
+@available(macOS 13.0, *)
+private struct DroplitModernSettingsRoot: View {
+    @ObservedObject var quickAccess: QuickAccessManager
+    @Binding var selectedSection: DroplitSettingsSection?
+    let selectedDetailSection: Binding<DroplitSettingsSection>
+    @Binding var searchText: String
+    @Binding var isImporting: Bool
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+
+    var body: some View {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            DroplitSettingsSidebarView(
+                selection: $selectedSection,
+                searchText: $searchText,
+                toggleSidebar: toggleSidebar
+            )
+        } detail: {
+            DroplitSettingsDetailView(
+                selection: selectedDetailSection,
+                quickAccess: quickAccess,
+                isImporting: $isImporting
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .navigationSplitViewStyle(.balanced)
+        .overlay(alignment: .topLeading) {
+            if columnVisibility == .detailOnly {
+                collapsedSidebarChromeOverlay
+            }
+        }
+    }
+
     private func toggleSidebar() {
-        withAnimation(.snappy(duration: 0.18)) {
+        withAnimation(.easeInOut(duration: 0.18)) {
             columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
         }
     }
@@ -68,7 +98,7 @@ struct ContentView: View {
     private var sidebarToggleButton: some View {
         Button(action: toggleSidebar) {
             Image(systemName: "sidebar.left")
-                .symbolRenderingMode(.hierarchical)
+                .droplitHierarchicalSymbolRendering()
                 .font(.system(size: 15, weight: .semibold))
                 .frame(width: 28, height: 28)
         }
@@ -91,6 +121,70 @@ struct ContentView: View {
                 .padding(.leading, 18)
                 .offset(y: -proxy.safeAreaInsets.top)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+    }
+}
+
+private struct DroplitLegacySettingsRoot: View {
+    @ObservedObject var quickAccess: QuickAccessManager
+    @Binding var selectedSection: DroplitSettingsSection?
+    let selectedDetailSection: Binding<DroplitSettingsSection>
+    @Binding var searchText: String
+    @Binding var isImporting: Bool
+    @State private var isSidebarVisible = true
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            HStack(spacing: 0) {
+                if isSidebarVisible {
+                    DroplitSettingsSidebarView(
+                        selection: $selectedSection,
+                        searchText: $searchText,
+                        toggleSidebar: toggleSidebar
+                    )
+                    .frame(width: 250)
+
+                    Divider()
+                }
+
+                DroplitSettingsDetailView(
+                    selection: selectedDetailSection,
+                    quickAccess: quickAccess,
+                    isImporting: $isImporting
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
+
+            if !isSidebarVisible {
+                collapsedSidebarChrome
+                    .padding(.top, 16)
+                    .padding(.leading, 18)
+            }
+        }
+    }
+
+    private func toggleSidebar() {
+        withAnimation(.easeInOut(duration: 0.18)) {
+            isSidebarVisible.toggle()
+        }
+    }
+
+    private var sidebarToggleButton: some View {
+        Button(action: toggleSidebar) {
+            Image(systemName: "sidebar.left")
+                .droplitHierarchicalSymbolRendering()
+                .font(.system(size: 15, weight: .semibold))
+                .frame(width: 28, height: 28)
+        }
+        .buttonStyle(.borderless)
+        .help("Toggle Sidebar")
+    }
+
+    private var collapsedSidebarChrome: some View {
+        HStack(spacing: 16) {
+            DroplitTrafficLightsView()
+
+            sidebarToggleButton
         }
     }
 }

@@ -28,7 +28,7 @@ private struct QuickAccessCursorModifier: ViewModifier {
                     pop()
                 }
             }
-            .onChange(of: style) { _, newStyle in
+            .onChange(of: style) { newStyle in
                 guard activeStyle != nil else { return }
                 pop()
                 push(newStyle)

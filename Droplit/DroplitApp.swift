@@ -13,16 +13,11 @@ struct DroplitApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        WindowGroup("Droplit", id: "main") {
+        WindowGroup("Droplit") {
             DroplitLaunchView()
                 .background(WindowChromeConfigurator())
-                .toolbar(removing: .title)
-                .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
-                .toolbarVisibility(.hidden, for: .windowToolbar)
+                .droplitHiddenWindowToolbar()
         }
-        .defaultSize(width: 920, height: 680)
-        .defaultLaunchBehavior(.presented)
-        .restorationBehavior(.disabled)
         .windowStyle(.hiddenTitleBar)
     }
 }
@@ -44,6 +39,7 @@ private struct WindowChromeConfigurator: NSViewRepresentable {
             window.titlebarAppearsTransparent = true
             window.titleVisibility = .hidden
             window.styleMask.insert(.fullSizeContentView)
+            window.minSize = NSSize(width: 720, height: 520)
             window.standardWindowButton(.closeButton)?.isHidden = true
             window.standardWindowButton(.miniaturizeButton)?.isHidden = true
             window.standardWindowButton(.zoomButton)?.isHidden = true

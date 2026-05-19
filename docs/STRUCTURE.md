@@ -41,9 +41,6 @@ Droplit/
       OnboardingToolSetupView.swift
       OnboardingView.swift
 
-    Home/
-      DroplitHomeActionGrid.swift
-
     OutputSettings/
       OutputSettingsView.swift
 
@@ -52,7 +49,6 @@ Droplit/
       DroplitSettingsSection.swift
       DroplitSettingsSharedViews.swift
       DroplitSettingsSidebarView.swift
-      DroplitSettingsWindowView.swift
       GeneralSettingsView.swift
       InfoSettingsView.swift
       QueueSettingsView.swift
@@ -84,6 +80,7 @@ Droplit/
       OptimizationTemporaryFileStore.swift
 
   Support/
+    DroplitCompatibility.swift
     ScreenUtility.swift
 
   ContentView.swift
@@ -107,12 +104,11 @@ docs/
 | --- | --- |
 | `App/` | App lifecycle, first-run launch gate, and launch-time service bootstrap |
 | `Features/Onboarding/` | First-run welcome, required optimizer tool setup, optional permission setup, and completion transition |
-| `Features/Home/` | Main post-onboarding action grid and launcher item components |
 | `Features/Settings/` | Main System Settings-style configuration shell, sidebar, detail pages, shared grouped rows |
 | `Features/OutputSettings/` | Output destination toggle, folder picker, temp retention controls |
 | `Features/QuickAccess/` | Floating stack, placeholder card, drag/drop, card visuals, trigger detection |
 | `Services/Optimization/` | Local CLI tool resolution, Homebrew bootstrap, output destination resolution, temp cleanup, optimizer process execution |
-| `Support/` | Small platform helpers |
+| `Support/` | Small platform helpers and macOS version compatibility wrappers |
 | `docs/DESIGN_TOKENS.md` | Shared visual tokens and state treatment |
 
 ## Onboarding Flow
@@ -153,7 +149,7 @@ docs/
 9. `QuickAccessDropReceiverView` caches pasteboard eligibility by `changeCount` during drag updates and avoids reading large inline data until drop.
 10. On drop, `QuickAccessDropReceiverView` reads file URLs or image/PDF pasteboard data.
 11. `QuickAccessManager` immediately inserts queued cards with placeholder thumbnails so the panel responds before thumbnail work finishes.
-12. `QuickAccessThumbnailGenerator` builds real image/PDF thumbnails off the main path, while video thumbnails use async AVFoundation loading.
+12. `QuickAccessThumbnailGenerator` builds image, PDF, and video thumbnails off the main path; video previews use `AVAssetImageGenerator`.
 13. The concurrency scheduler starts up to the configured number of optimization jobs.
 14. Extra jobs remain queued until an active job completes, fails, or is removed.
 15. Removing a processing card cancels the Swift task and terminates the active optimizer process.
@@ -177,21 +173,17 @@ Parallel job count is changed from the Settings window Concurrency configuration
 
 ## Home and Settings UI
 
-1. `ContentView` owns the smaller post-onboarding home window with an onboarding-style transparent material background, balanced fixed padding, compact app identity header, top-right Settings button, and action grid.
-2. `DroplitHomeActionGrid` renders the reusable grid menu items for Optimize Files and disabled Zip.
-3. The Optimize Files action uses the main window file importer and sends selected URLs to `QuickAccessManager`.
-4. The Settings icon opens the dedicated singleton Settings scene.
-5. `DroplitSettingsWindowView` owns the configuration window shell, `NavigationSplitView`, search state, and settings file importer.
-6. `DroplitSettingsSidebarView` renders the native source-list sidebar, including standalone About plus grouped Settings and Tool sections, and relies on split-view `searchable` for filtering.
-7. `DroplitSettingsDetailView` switches between detail pages based on `DroplitSettingsSection`.
-8. `DroplitSettingsPage` provides the shared heading plus scroll layout for every detail page.
-9. `DroplitSettingsGroup`, `DroplitSettingsControlRow`, `DroplitSettingsValueRow`, and `DroplitSettingsAlignedRow` provide the shared native settings row treatment.
-10. `InfoSettingsView` About is the default standalone landing page.
-11. `QuickAccessSettingsView` owns Quick Access trigger, placement, preview, and concurrency controls.
-12. `OutputSettingsView` owns save location, destination folder, temp retention, and conversion output behavior.
-13. `ToolsSettingsView` owns optimizer status and Homebrew install action.
-14. `QueueSettingsView` owns the Media Optimization status, remove actions, and file import entry point.
-15. `InfoSettingsView` owns lightweight appearance, privacy, advanced settings, and the About identity/application details.
+1. `ContentView` owns the post-onboarding settings shell and starts `QuickAccessManager`.
+2. On macOS 13 and newer, `DroplitModernSettingsRoot` uses `NavigationSplitView`; on macOS 11-12, `DroplitLegacySettingsRoot` uses an `HStack` sidebar/detail fallback.
+3. `DroplitSettingsSidebarView` renders the native source-list sidebar, including standalone About plus grouped Settings and Tool sections, and filters sections with an AppKit `NSSearchField`.
+4. `DroplitSettingsDetailView` switches between detail pages based on `DroplitSettingsSection`.
+5. `DroplitSettingsPage` provides the shared heading plus scroll layout for every detail page.
+6. `DroplitSettingsGroup`, `DroplitSettingsControlRow`, `DroplitSettingsValueRow`, and `DroplitSettingsAlignedRow` provide the shared native settings row treatment.
+7. `InfoSettingsView` About is the default standalone landing page.
+8. `QuickAccessSettingsView` owns Quick Access trigger, placement, preview, and concurrency controls.
+9. `OutputSettingsView` owns save location, destination folder, temp retention, and conversion output behavior.
+10. `ToolsSettingsView` owns optimizer status and Homebrew install action.
+11. `QueueSettingsView` owns the Media Optimization status, remove actions, and file import entry point.
 
 ## Homebrew Bootstrap Flow
 

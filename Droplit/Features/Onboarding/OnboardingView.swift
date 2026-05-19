@@ -25,8 +25,11 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            Rectangle()
-                .fill(.ultraThinMaterial)
+            DroplitMaterialFill(
+                shape: Rectangle(),
+                kind: .ultraThin,
+                fallbackOpacity: 0.68
+            )
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -36,7 +39,7 @@ struct OnboardingView: View {
                             .frame(maxWidth: .infinity)
                             .frame(minHeight: proxy.size.height, alignment: .center)
                     }
-                    .scrollBounceBehavior(.basedOnSize)
+                    .droplitScrollBounceBasedOnSize()
                 }
 
                 footer
@@ -50,16 +53,12 @@ struct OnboardingView: View {
             idealHeight: 680,
             maxHeight: .infinity
         )
-        .containerBackground(.ultraThinMaterial, for: .window)
-        .toolbarVisibility(.hidden, for: .windowToolbar)
-        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
-        .overlay(alignment: .top) {
-            Color.clear
-                .frame(height: 52)
-                .contentShape(Rectangle())
-                .gesture(WindowDragGesture())
-                .allowsWindowActivationEvents(true)
-        }
+        .droplitWindowMaterialBackground()
+        .overlay(
+            DroplitWindowDragArea()
+                .frame(height: 52),
+            alignment: .top
+        )
     }
 
     private var stepContent: some View {
@@ -70,7 +69,7 @@ struct OnboardingView: View {
 
                 Text(currentStep.subtitle)
                     .font(.title3)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -111,12 +110,12 @@ struct OnboardingView: View {
 
             Text("Quickly optimize images, videos, GIFs, and PDFs with local tools on your Mac.")
                 .font(.body)
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
 
             Label("Drag a supported file, trigger Quick Access, then drop it into Droplit.", systemImage: "sparkles.rectangle.stack")
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
         }
         .frame(maxWidth: 520, alignment: .center)
     }
@@ -131,7 +130,7 @@ struct OnboardingView: View {
 
                 Text("Images and videos move from the placeholder into processing as soon as you release.")
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -152,7 +151,7 @@ struct OnboardingView: View {
                 Button(primaryButtonTitle) {
                     performPrimaryAction()
                 }
-                .buttonStyle(.borderedProminent)
+                .droplitProminentButtonStyle()
                 .keyboardShortcut(.defaultAction)
                 .disabled(isPrimaryButtonDisabled)
             }

@@ -9,30 +9,25 @@ The dedicated configuration surface follows the macOS System Settings pattern:
 
 - default launch content size: 920 x 680
 - window resizing: standard user-resizable behavior; content must not force window height
-- root layout: `NavigationSplitView` with `.balanced` style
+- root layout: `NavigationSplitView` with `.balanced` style on macOS 13+, manual sidebar/detail fallback on macOS 11-12
 - sidebar width: 220 minimum, 250 ideal, 280 maximum
-- search field: system `searchable(... placement: .sidebar)` field, no custom chrome
+- search field: AppKit-backed `NSSearchField` in the sidebar header for cross-version consistency
 - selected sidebar row: native source-list highlight and vibrancy
 - detail content width: 760 maximum, 32 horizontal inset, top-safe-area underlap, 22 bottom inset
 - detail typography: title heading, compact callout subtitle, semantic secondary text
 - settings groups: `GroupBox` sections with standard material fill, 16-point horizontal inset, and balanced vertical spacing
 - settings rows: fixed leading label column plus trailing value/action or menu picker column, plain button rows for navigation
-- deployment target: macOS 15.0; the split view relies on current SwiftUI desktop behavior
+- deployment target: macOS 11.0; newer SwiftUI APIs are wrapped with availability guards and AppKit/SwiftUI fallbacks
 
-## Main Home Window
+## Main Settings Window
 
-The post-onboarding `ContentView` uses a smaller onboarding-style material
+The post-onboarding `ContentView` uses a System Settings-style sidebar/detail
 surface:
 
-- default launch sizing: dynamic scene placement from the visible content ideal size
-- content ideal size: 480 x 360, minimum 420 x 320
-- visual style: `.ultraThinMaterial` content and window container background, hidden toolbar/header
-- layout: 24-point balanced outer padding, top-right Settings icon, centered compact app identity header, 2-column action grid, no scroll
-- action grid width: 420 maximum, 12-point grid gap
-- action item size: 92 minimum height, 12-point inner padding
-- action item style: `.regularMaterial` rounded utility surface, subtle white stroke, SF Symbol leading icon, trailing action glyph
-- actions: Optimize Files imports directly; Zip is visible as disabled coming-soon action
-- drag affordance: transparent top drag region leaves the Settings icon interactive
+- minimum content size: 720 x 520
+- visual style: native sidebar/detail layout, hidden titlebar/header on supported macOS versions
+- layout: sidebar search and navigation on the leading edge, detail page content on the trailing edge
+- actions: Queue page imports files directly; Quick Access continues running from app launch and `ContentView.onAppear`
 
 ## Onboarding Window
 
@@ -49,9 +44,9 @@ material treatment:
 - dependency step: large thin-stroke circular progress control under the title/subtitle, blocks Continue until all optimizer tools are ready, installs missing Homebrew packages on click, and resolves to Done at 100%
 - dependency footer CTA: while required dependencies are missing, the footer primary button becomes Install, then returns to Continue after setup finishes successfully
 - Homebrew unavailable state: show Homebrew install link, Refresh action, and manual install fallback copy
-- dependency list: paragraph text with project hyperlinks for each optimizer name
+- dependency list: paragraph text listing each optimizer name
 - ready step: centered Quick Access preview shows media chips and a pointer moving into a raised monochrome material drop card, then becoming a non-overlapping clipped vertical processing stack
-- restoration: disabled for the main window so first-run onboarding does not restore an oversized or closed saved state
+- restoration: hidden-titlebar shell keeps the onboarding/settings window in a predictable app-managed layout
 - completion: swaps into the main settings window; `AppDelegate` owns launch-time Quick Access bootstrap, while `ContentView.onAppear` starts it after first-run completion
 
 ## Color
@@ -130,12 +125,11 @@ material treatment:
 
 ## Implementation Map
 
-- app launch shell lives in `DroplitLaunchView`; post-onboarding home shell lives in `ContentView`
-- home action grid lives in `Features/Home/DroplitHomeActionGrid.swift`
-- settings shell lives in `DroplitSettingsWindowView` and uses `NavigationSplitView`
+- app launch shell lives in `DroplitLaunchView`; post-onboarding settings shell lives in `ContentView`
+- settings shell lives in `ContentView`; `DroplitModernSettingsRoot` uses `NavigationSplitView` on macOS 13+ and `DroplitLegacySettingsRoot` provides the macOS 11-12 fallback
 - first-run onboarding lives in `Features/Onboarding` and uses only native transparent materials, SF Symbols, GroupBox, dot step indicators, and standard buttons
 - sidebar only lists top-level destinations; storage, conversion, and concurrency are surfaced from detail pages instead of duplicate source-list entries
-- sidebar search is attached at the split-view level with `.searchable(... placement: .sidebar)`
+- sidebar search uses `DroplitSidebarSearchField`, an AppKit-backed search field that works across the deployment range
 - sidebar rows stay flat and Mail-like: one SF Symbol, one title line, one optional secondary line
 - detail pages use `DroplitSettingsPage` for heading plus scroll layout
 - grouped settings content uses `DroplitSettingsGroup`, `DroplitSettingsControlRow`, `DroplitSettingsValueRow`, `DroplitSettingsMenuPicker`, and a shared aligned-row layout

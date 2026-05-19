@@ -24,10 +24,10 @@ struct QueueSettingsView: View {
             }
 
             if quickAccess.items.isEmpty {
-                ContentUnavailableView(
-                    "No Jobs Yet",
+                DroplitEmptyStateView(
+                    title: "No Jobs Yet",
                     systemImage: "tray",
-                    description: Text("Use Quick Access or import files to start optimizing.")
+                    description: "Use Quick Access or import files to start optimizing."
                 )
                 .frame(maxWidth: .infinity, minHeight: 220)
             } else {
@@ -71,7 +71,7 @@ private struct QueueSettingsRow: View {
                     .lineLimit(1)
                 Text(item.detailLine)
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
                     .lineLimit(1)
             }
 
@@ -85,7 +85,7 @@ private struct QueueSettingsRow: View {
                 Image(systemName: "xmark")
             }
             .buttonStyle(.borderless)
-            .foregroundStyle(.secondary)
+            .foregroundColor(.secondary)
             .help("Remove")
         }
         .padding(.vertical, 10)
@@ -97,18 +97,18 @@ private struct QueueSettingsRow: View {
         case .queued:
             Text("Queued")
                 .font(.callout.weight(.medium))
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
         case .processing:
             ProgressView()
                 .controlSize(.small)
         case .completed:
             Text("Done")
                 .font(.callout.weight(.medium))
-                .foregroundStyle(.green)
+                .foregroundColor(.green)
         case .failed:
             Text("Failed")
                 .font(.callout.weight(.medium))
-                .foregroundStyle(.orange)
+                .foregroundColor(.orange)
         }
     }
 }

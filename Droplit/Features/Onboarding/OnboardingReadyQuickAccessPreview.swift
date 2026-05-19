@@ -17,13 +17,13 @@ struct OnboardingReadyQuickAccessPreview: View {
 
             Image(systemName: "cursorarrow")
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(.primary)
+                .foregroundColor(.primary)
                 .shadow(color: .black.opacity(0.16), radius: 5, y: 2)
                 .offset(cursorOffset)
                 .opacity(phase == .processing ? 0 : 1)
         }
         .frame(width: 420, height: 236)
-        .task(id: reduceMotion) { await runPreviewLoop() }
+        .droplitTask(id: reduceMotion) { await runPreviewLoop() }
         .accessibilityElement(children: .combine).accessibilityLabel("Drop media into Quick Access to start processing")
     }
 
@@ -55,7 +55,7 @@ struct OnboardingReadyQuickAccessPreview: View {
             OnboardingReadyFileChip(title: "Video", systemImage: "video.fill")
         }
         .padding(8)
-        .background(.ultraThinMaterial, in: Capsule())
+        .droplitMaterialBackground(.ultraThin, in: Capsule(), fallbackOpacity: 0.72)
         .overlay(Capsule().strokeBorder(Color.primary.opacity(0.10), lineWidth: 1))
         .shadow(color: .black.opacity(0.055), radius: 18, y: 8)
     }
@@ -107,16 +107,16 @@ private struct OnboardingReadyFileChip: View {
         HStack(spacing: 6) {
             Image(systemName: systemImage)
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
                 .frame(width: 14)
             Text(title)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.primary)
+                .foregroundColor(.primary)
                 .lineLimit(1)
         }
         .padding(.horizontal, 10)
         .frame(height: 26)
-        .background(.regularMaterial, in: Capsule())
+        .droplitMaterialBackground(.regular, in: Capsule())
         .overlay(Capsule().strokeBorder(Color.primary.opacity(0.10), lineWidth: 1))
     }
 }

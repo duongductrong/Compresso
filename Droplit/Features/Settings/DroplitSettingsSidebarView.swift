@@ -30,24 +30,20 @@ struct DroplitSettingsSidebarView: View {
                 }
             }
             .listStyle(.sidebar)
-            .overlay {
-                if !hasFilteredResults {
-                    ContentUnavailableView.search(text: searchText)
-                }
-            }
+            .overlay(emptySearchOverlay)
         }
         .ignoresSafeArea(.container, edges: .top)
-        .navigationSplitViewColumnWidth(min: 220, ideal: 250, max: 280)
+        .droplitSidebarColumnWidth(min: 220, ideal: 250, max: 280)
     }
 
     private var sidebarHeader: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             sidebarChrome
 
             sidebarSearchField
         }
-        .padding(.top, 16)
-        .padding(.bottom, 10)
+        .padding(.top, 18)
+        .padding(.bottom, 12)
     }
 
     private var sidebarChrome: some View {
@@ -58,7 +54,7 @@ struct DroplitSettingsSidebarView: View {
 
             Button(action: toggleSidebar) {
                 Image(systemName: "sidebar.left")
-                    .symbolRenderingMode(.hierarchical)
+                    .droplitHierarchicalSymbolRendering()
                     .font(.system(size: 15, weight: .semibold))
                     .frame(width: 28, height: 28)
             }
@@ -71,38 +67,9 @@ struct DroplitSettingsSidebarView: View {
     }
 
     private var sidebarSearchField: some View {
-        HStack(spacing: 7) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.secondary)
-
-            TextField("Search Settings", text: $searchText)
-                .textFieldStyle(.plain)
-                .font(.body)
-
-            if !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.plain)
-                .help("Clear Search")
-            }
-        }
-        .frame(height: 34)
-        .padding(.horizontal, 10)
-        .background {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.76))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(.primary.opacity(0.08), lineWidth: 1)
-        }
-        .padding(.horizontal, 16)
+        DroplitSidebarSearchField(text: $searchText)
+            .frame(height: 38)
+            .padding(.horizontal, 16)
     }
 
     private var filteredGroups: [DroplitSettingsSidebarGroup] {
@@ -125,6 +92,17 @@ struct DroplitSettingsSidebarView: View {
         !filteredStandaloneSections.isEmpty || !filteredGroups.isEmpty
     }
 
+    @ViewBuilder
+    private var emptySearchOverlay: some View {
+        if !hasFilteredResults {
+            DroplitEmptyStateView(
+                title: "No Results",
+                systemImage: "magnifyingglass",
+                description: "No settings match \"\(searchText)\"."
+            )
+        }
+    }
+
     private var canonicalSelection: Binding<DroplitSettingsSection?> {
         Binding(
             get: { selection?.canonicalSection },
@@ -135,7 +113,7 @@ struct DroplitSettingsSidebarView: View {
     private func sidebarRow(_ section: DroplitSettingsSection) -> some View {
         HStack(spacing: 10) {
             Image(systemName: section.systemImage)
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
                 .frame(width: 16)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -144,7 +122,7 @@ struct DroplitSettingsSidebarView: View {
 
                 Text(section.subtitle)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
                     .lineLimit(1)
             }
 
@@ -180,22 +158,84 @@ struct DroplitTrafficLightsView: View {
             Circle()
                 .fill(color)
                 .frame(width: 13, height: 13)
-                .overlay {
-                    if isHovering {
-                        Image(systemName: symbol)
-                            .font(.system(size: 7, weight: .bold))
-                            .foregroundStyle(.black.opacity(0.55))
+                .overlay(
+                    Group {
+                        if isHovering {
+                            Image(systemName: symbol)
+                                .font(.system(size: 7, weight: .bold))
+                                .foregroundColor(.black.opacity(0.55))
+                        }
                     }
-                }
-                .overlay {
+                )
+                .overlay(
                     Circle()
                         .stroke(.black.opacity(0.16), lineWidth: 0.5)
-                }
+                )
         }
         .buttonStyle(.plain)
     }
 
     private var activeWindow: NSWindow? {
         NSApp.keyWindow ?? NSApp.mainWindow
+    }
+}
+
+private struct DroplitSidebarSearchField: NSViewRepresentable {
+    @Binding var text: String
+    private let searchFieldHeight: CGFloat = 34
+
+    func makeNSView(context: Context) -> NSView {
+        let container = NSView()
+        let searchField = NSSearchField()
+        searchField.delegate = context.coordinator
+        searchField.placeholderString = "Search Settings"
+        searchField.sendsSearchStringImmediately = true
+        searchField.sendsWholeSearchString = false
+        searchField.controlSize = .large
+        searchField.bezelStyle = .roundedBezel
+        searchField.focusRingType = .default
+        searchField.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        searchField.translatesAutoresizingMaskIntoConstraints = false
+
+        container.addSubview(searchField)
+        NSLayoutConstraint.activate([
+            searchField.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            searchField.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            searchField.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            searchField.heightAnchor.constraint(equalToConstant: searchFieldHeight)
+        ])
+
+        context.coordinator.searchField = searchField
+        return container
+    }
+
+    func updateNSView(_ container: NSView, context: Context) {
+        guard let searchField = context.coordinator.searchField else {
+            return
+        }
+
+        if searchField.stringValue != text {
+            searchField.stringValue = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    final class Coordinator: NSObject, NSSearchFieldDelegate {
+        private let text: Binding<String>
+        weak var searchField: NSSearchField?
+
+        init(text: Binding<String>) {
+            self.text = text
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let searchField = notification.object as? NSSearchField else {
+                return
+            }
+            text.wrappedValue = searchField.stringValue
+        }
     }
 }

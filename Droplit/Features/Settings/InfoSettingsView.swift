@@ -62,7 +62,7 @@ struct InfoSettingsView: View {
 
                 Text(appSlogan)
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
         }

@@ -44,11 +44,11 @@
 - **Smart Output** — save optimized files to a chosen folder, or use Droplit's temporary app storage with configurable auto-expiration (1–90 days).
 - **Homebrew Bootstrap** — detects missing optimizers on launch and offers one-click `brew install` when Homebrew is available.
 - **Onboarding** — guided first-run setup for installing dependencies and optional permissions.
-- **System Settings-style UI** — native `NavigationSplitView` settings with sidebar search, grouped controls, and a dedicated About page.
+- **System Settings-style UI** — native settings shell with `NavigationSplitView` on modern macOS, a macOS 11-12 fallback sidebar, grouped controls, and a dedicated About page.
 
 ## Install
 
-> Requires **macOS 15.0** or later.
+> Requires **macOS 11.0** or later.
 > 
 > A working **Homebrew** installation is recommended so Droplit can install missing optimizer tools automatically.
 

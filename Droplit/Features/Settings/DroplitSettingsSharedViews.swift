@@ -44,7 +44,7 @@ struct DroplitSettingsPage<Content: View>: View {
 
                         Text(subtitle)
                             .font(.callout)
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.top, -DroplitSettingsMetrics.pageHeaderLift)
@@ -93,7 +93,7 @@ struct DroplitSettingsGroup<Content: View>: View {
                 // if let description {
                 //     Text(description)
                 //         .font(.callout)
-                //         .foregroundStyle(.secondary)
+                //         .foregroundColor(.secondary)
                 //         .fixedSize(horizontal: false, vertical: true)
                 // }
             }
@@ -138,9 +138,9 @@ struct DroplitSettingsValueRow: View {
             subtitle: subtitle
         ) {
             Text(value)
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
                 .multilineTextAlignment(.trailing)
-                .textSelection(.enabled)
+                .droplitTextSelectionEnabled()
         }
     }
 }
@@ -205,7 +205,7 @@ struct DroplitSettingsNavigationRow: View {
 
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundColor(.secondary.opacity(0.72))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
@@ -234,7 +234,7 @@ private struct DroplitSettingsRowLabel: View {
             if let subtitle {
                 Text(subtitle)
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

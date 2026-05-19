@@ -17,6 +17,6 @@ struct DroplitLaunchView: View {
                 }
             }
         }
-        .animation(.snappy(duration: 0.22), value: isOnboardingComplete)
+        .animation(.easeInOut(duration: 0.22), value: isOnboardingComplete)
     }
 }
