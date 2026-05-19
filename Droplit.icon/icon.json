@@ -4,34 +4,30 @@
   },
   "groups" : [
     {
+      "hidden" : false,
       "layers" : [
         {
-          "blend-mode" : "normal",
           "fill" : {
-            "solid" : "display-p3:0.00000,0.00000,0.00000,1.00000"
+            "solid" : "display-p3:0.00684,0.00000,0.05730,1.00000"
           },
-          "hidden-specializations" : [
-            {
-              "idiom" : "square",
-              "value" : false
-            }
-          ],
-          "image-name" : "droplit-light.svg",
-          "name" : "droplit-light",
+          "hidden" : false,
+          "image-name" : "droplit.svg",
+          "name" : "droplit",
           "position-specializations" : [
             {
               "idiom" : "square",
               "value" : {
-                "scale" : 0.71,
+                "scale" : 0.7,
                 "translation-in-points" : [
                   0,
-                  0
+                  -15
                 ]
               }
             }
           ]
         }
       ],
+      "name" : "Group",
       "shadow" : {
         "kind" : "neutral",
         "opacity" : 0.5

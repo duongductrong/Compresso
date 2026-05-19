@@ -5,7 +5,7 @@ compact controls, and rounded utility surfaces.
 
 ## Main Settings Window
 
-The main configuration surface follows the macOS System Settings pattern:
+The dedicated configuration surface follows the macOS System Settings pattern:
 
 - default launch content size: 920 x 680
 - window resizing: standard user-resizable behavior; content must not force window height
@@ -18,6 +18,21 @@ The main configuration surface follows the macOS System Settings pattern:
 - settings groups: `GroupBox` sections with standard material fill, 16-point horizontal inset, and balanced vertical spacing
 - settings rows: fixed leading label column plus trailing value/action or menu picker column, plain button rows for navigation
 - deployment target: macOS 15.0; the split view relies on current SwiftUI desktop behavior
+
+## Main Home Window
+
+The post-onboarding `ContentView` uses a smaller onboarding-style material
+surface:
+
+- default launch sizing: dynamic scene placement from the visible content ideal size
+- content ideal size: 480 x 360, minimum 420 x 320
+- visual style: `.ultraThinMaterial` content and window container background, hidden toolbar/header
+- layout: 24-point balanced outer padding, top-right Settings icon, centered compact app identity header, 2-column action grid, no scroll
+- action grid width: 420 maximum, 12-point grid gap
+- action item size: 92 minimum height, 12-point inner padding
+- action item style: `.regularMaterial` rounded utility surface, subtle white stroke, SF Symbol leading icon, trailing action glyph
+- actions: Optimize Files imports directly; Zip is visible as disabled coming-soon action
+- drag affordance: transparent top drag region leaves the Settings icon interactive
 
 ## Onboarding Window
 
@@ -115,7 +130,9 @@ material treatment:
 
 ## Implementation Map
 
-- app launch shell lives in `DroplitLaunchView`; main settings shell lives in `ContentView` and uses `NavigationSplitView`
+- app launch shell lives in `DroplitLaunchView`; post-onboarding home shell lives in `ContentView`
+- home action grid lives in `Features/Home/DroplitHomeActionGrid.swift`
+- settings shell lives in `DroplitSettingsWindowView` and uses `NavigationSplitView`
 - first-run onboarding lives in `Features/Onboarding` and uses only native transparent materials, SF Symbols, GroupBox, dot step indicators, and standard buttons
 - sidebar only lists top-level destinations; storage, conversion, and concurrency are surfaced from detail pages instead of duplicate source-list entries
 - sidebar search is attached at the split-view level with `.searchable(... placement: .sidebar)`

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./assets/Droplit-iOS-Default-128x128@1x.png" width="128" height="128" alt="Droplit icon" />
+  <img src="./assets/Droplit-macOS-Default-256x256@1x.png" width="128" height="128" alt="Droplit icon" />
 
   <h1>Droplit</h1>
   <p><strong>Native macOS media optimizer — drag, drop, and optimize from anywhere.</strong></p>
