@@ -123,6 +123,21 @@ enum QuickAccessPasteboardPayload {
             || pasteboard.availableType(from: inlineDataTypes) != nil
     }
 
+    static func pendingDropSummary(from pasteboard: NSPasteboard) -> QuickAccessPendingDropSummary? {
+        let fileKinds = extractOptimizableFileURLs(from: pasteboard).map(QuickAccessFileKind.detect)
+        if let summary = pendingDropSummary(for: fileKinds) {
+            return summary
+        }
+
+        guard let inlineType = pasteboard.availableType(from: inlineDataTypes) else {
+            return nil
+        }
+
+        return inlineType == pdfType
+            ? QuickAccessPendingDropSummary(count: 1, singularName: "PDF", pluralName: "PDFs")
+            : QuickAccessPendingDropSummary(count: 1, singularName: "Image", pluralName: "Images")
+    }
+
     static func extractOptimizableURLs(from pasteboard: NSPasteboard) -> [URL] {
         var urls = extractOptimizableFileURLs(from: pasteboard)
 
@@ -171,6 +186,21 @@ enum QuickAccessPasteboardPayload {
         return urls.filter { QuickAccessFileKind.detect(from: $0).isSupported }
     }
 
+    private static func pendingDropSummary(for kinds: [QuickAccessFileKind]) -> QuickAccessPendingDropSummary? {
+        guard !kinds.isEmpty else { return nil }
+
+        if kinds.allSatisfy(\.isImageLikeForDropSummary) {
+            return QuickAccessPendingDropSummary(count: kinds.count, singularName: "Image", pluralName: "Images")
+        }
+        if kinds.allSatisfy({ $0 == .video }) {
+            return QuickAccessPendingDropSummary(count: kinds.count, singularName: "Video", pluralName: "Videos")
+        }
+        if kinds.allSatisfy({ $0 == .pdf }) {
+            return QuickAccessPendingDropSummary(count: kinds.count, singularName: "PDF", pluralName: "PDFs")
+        }
+        return QuickAccessPendingDropSummary(count: kinds.count, singularName: "File", pluralName: "Files")
+    }
+
     private static func writeDroppedImage(data: Data, extension pathExtension: String) throws -> URL {
         let directory = try OptimizationTemporaryFileStore.ensureDroppedInputDirectory()
         let url = directory
@@ -178,6 +208,17 @@ enum QuickAccessPasteboardPayload {
             .appendingPathExtension(pathExtension)
         try data.write(to: url, options: .atomic)
         return url
+    }
+}
+
+private extension QuickAccessFileKind {
+    var isImageLikeForDropSummary: Bool {
+        switch self {
+        case .png, .jpeg, .gif, .image:
+            return true
+        case .video, .pdf, .unknown:
+            return false
+        }
     }
 }
 

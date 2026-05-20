@@ -117,9 +117,13 @@ nonisolated enum QuickAccessPosition: String, CaseIterable, Codable, Identifiabl
         QuickAccessPosition(edge: edge, alignment: newAlignment)
     }
 
-    func calculateOrigin(for size: CGSize, on screen: NSScreen, padding: CGFloat = 22) -> CGPoint {
+    func calculateOrigin(
+        for size: CGSize,
+        on screen: NSScreen,
+        padding: CGFloat = 22,
+        shadowMargin: CGFloat = QuickAccessLayout.shadowMargin
+    ) -> CGPoint {
         let frame = screen.visibleFrame
-        let shadowMargin = QuickAccessLayout.shadowMargin
         let x: CGFloat
         switch alignment {
         case .left:
@@ -139,11 +143,21 @@ nonisolated enum QuickAccessPosition: String, CaseIterable, Codable, Identifiabl
         return CGPoint(x: x, y: y)
     }
 
-    func offscreenOrigin(for size: CGSize, on screen: NSScreen, padding: CGFloat = 22) -> CGPoint {
+    func offscreenOrigin(
+        for size: CGSize,
+        on screen: NSScreen,
+        padding: CGFloat = 22,
+        shadowMargin: CGFloat = QuickAccessLayout.shadowMargin
+    ) -> CGPoint {
         let frame = screen.visibleFrame
         let margin: CGFloat = 48
         if isTopEdge {
-            let targetOrigin = calculateOrigin(for: size, on: screen, padding: padding)
+            let targetOrigin = calculateOrigin(
+                for: size,
+                on: screen,
+                padding: padding,
+                shadowMargin: shadowMargin
+            )
             return CGPoint(x: targetOrigin.x, y: frame.maxY + margin)
         }
 
@@ -203,6 +217,16 @@ nonisolated enum QuickAccessTriggerInteraction: String, CaseIterable, Codable, I
         case .shake: "waveform.path.ecg"
         case .hold: "timer"
         }
+    }
+}
+
+nonisolated struct QuickAccessPendingDropSummary: Equatable {
+    let count: Int
+    let singularName: String
+    let pluralName: String
+
+    var displayText: String {
+        "\(count) \(count == 1 ? singularName : pluralName)"
     }
 }
 
@@ -276,13 +300,13 @@ nonisolated enum QuickAccessLayout {
     static let cardSpacing: CGFloat = 10
     static let shadowMargin: CGFloat = 58
     static let containerPadding: CGFloat = shadowMargin
-    static let maximumFloatingItems = 4
+    static let stackMaximumItems = 4
 
     static func itemHeight(hasConversionActions: Bool) -> CGFloat {
         cardHeight + (hasConversionActions ? conversionActionSpacing + conversionActionRowHeight : 0)
     }
 
-    static func panelSize(
+    static func stackPanelSize(
         itemCardCount: Int,
         conversionActionRowCount: Int,
         dropPlaceholderCount: Int,
@@ -302,10 +326,10 @@ nonisolated enum QuickAccessLayout {
         return CGSize(width: cardWidth + containerPadding * 2, height: height)
     }
 
-    static func fixedPanelSize(includesDropPlaceholder: Bool) -> CGSize {
-        panelSize(
-            itemCardCount: maximumFloatingItems,
-            conversionActionRowCount: maximumFloatingItems,
+    static func fixedStackPanelSize(includesDropPlaceholder: Bool) -> CGSize {
+        stackPanelSize(
+            itemCardCount: stackMaximumItems,
+            conversionActionRowCount: stackMaximumItems,
             dropPlaceholderCount: includesDropPlaceholder ? 1 : 0,
             includesOverflowCard: true
         )
@@ -313,6 +337,7 @@ nonisolated enum QuickAccessLayout {
 }
 
 nonisolated enum QuickAccessJobState: Equatable {
+    case staged
     case queued
     case processing
     case completed
@@ -456,7 +481,7 @@ nonisolated enum QuickAccessConversionTarget: String, CaseIterable, Codable, Ide
     }
 }
 
-struct QuickAccessItem: Identifiable {
+nonisolated struct QuickAccessItem: Identifiable {
     let id: UUID
     let sourceURL: URL
     let kind: QuickAccessFileKind
@@ -480,7 +505,8 @@ struct QuickAccessItem: Identifiable {
         thumbnail: NSImage,
         originalBytes: Int64,
         mediaDuration: TimeInterval?,
-        pixelSize: CGSize?
+        pixelSize: CGSize?,
+        state: QuickAccessJobState = .queued
     ) {
         self.id = UUID()
         self.sourceURL = sourceURL
@@ -490,7 +516,7 @@ struct QuickAccessItem: Identifiable {
         self.originalBytes = originalBytes
         self.mediaDuration = mediaDuration
         self.pixelSize = pixelSize
-        self.state = .queued
+        self.state = state
         self.elapsed = 0
         self.progress = nil
         self.optimizedBytes = nil
@@ -506,6 +532,10 @@ struct QuickAccessItem: Identifiable {
 
     var optimizedSizeText: String {
         ByteCountFormatter.droplitString(fromByteCount: optimizedBytes ?? originalBytes)
+    }
+
+    var sizeComparisonText: String {
+        "\(originalSizeText) -> \(optimizedSizeText)"
     }
 
     var displayTitle: String {
@@ -534,6 +564,8 @@ struct QuickAccessItem: Identifiable {
 
     var detailLine: String {
         switch state {
+        case .staged:
+            return "Ready"
         case .queued:
             return "Queued"
         case .processing:
@@ -542,7 +574,7 @@ struct QuickAccessItem: Identifiable {
             }
             return "\(activeOperationName) \(elapsed.timecode3)"
         case .completed:
-            return "\(originalSizeText) -> \(optimizedSizeText)"
+            return sizeComparisonText
         case .failed:
             return failureMessage ?? "Failed"
         }
@@ -550,7 +582,7 @@ struct QuickAccessItem: Identifiable {
 }
 
 extension ByteCountFormatter {
-    static func droplitString(fromByteCount bytes: Int64) -> String {
+    nonisolated static func droplitString(fromByteCount bytes: Int64) -> String {
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useKB, .useMB, .useGB]
         formatter.countStyle = .file
@@ -561,7 +593,7 @@ extension ByteCountFormatter {
 }
 
 extension TimeInterval {
-    var timecode3: String {
+    nonisolated var timecode3: String {
         String(format: "%.3fs", self)
     }
 }

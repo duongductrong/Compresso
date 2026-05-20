@@ -8,6 +8,7 @@ final class QuickAccessPanelController {
     private let padding: CGFloat = 22
     private var isAnimating = false
     private var activeContentHeight: CGFloat = 0
+    private var shadowMargin: CGFloat = QuickAccessLayout.shadowMargin
 
     private var reduceMotion: Bool {
         NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -19,14 +20,21 @@ final class QuickAccessPanelController {
         _ content: Content,
         size: CGSize,
         position: QuickAccessPosition,
-        activeContentHeight: CGFloat
+        activeContentHeight: CGFloat,
+        shadowMargin: CGFloat
     ) {
         guard !isAnimating else { return }
         self.position = position
         self.activeContentHeight = activeContentHeight
+        self.shadowMargin = shadowMargin
 
         let screen = ScreenUtility.activeScreen()
-        let targetOrigin = position.calculateOrigin(for: size, on: screen, padding: padding)
+        let targetOrigin = position.calculateOrigin(
+            for: size,
+            on: screen,
+            padding: padding,
+            shadowMargin: shadowMargin
+        )
         let targetFrame = NSRect(origin: targetOrigin, size: size)
 
         let panel = QuickAccessPanel(contentRect: targetFrame)
@@ -45,7 +53,12 @@ final class QuickAccessPanelController {
                 panel.animator().alphaValue = 1
             }
         } else {
-            let offscreenOrigin = position.offscreenOrigin(for: size, on: screen, padding: padding)
+            let offscreenOrigin = position.offscreenOrigin(
+                for: size,
+                on: screen,
+                padding: padding,
+                shadowMargin: shadowMargin
+            )
             panel.setFrame(NSRect(origin: offscreenOrigin, size: size), display: false)
             panel.alphaValue = 1
             panel.orderFrontRegardless()
@@ -73,10 +86,16 @@ final class QuickAccessPanelController {
         repositionPanel()
     }
 
-    func updateSize(_ size: CGSize) {
+    func updateSize(_ size: CGSize, shadowMargin: CGFloat) {
         guard let panel, !isAnimating else { return }
+        self.shadowMargin = shadowMargin
         let screen = ScreenUtility.activeScreen()
-        let origin = position.calculateOrigin(for: size, on: screen, padding: padding)
+        let origin = position.calculateOrigin(
+            for: size,
+            on: screen,
+            padding: padding,
+            shadowMargin: shadowMargin
+        )
         let targetFrame = NSRect(origin: origin, size: size)
         if panel.frame != targetFrame {
             panel.setFrame(targetFrame, display: true, animate: false)
@@ -106,7 +125,12 @@ final class QuickAccessPanelController {
         } else {
             let screen = ScreenUtility.activeScreen()
             let size = panel.frame.size
-            let offscreenOrigin = position.offscreenOrigin(for: size, on: screen, padding: padding)
+            let offscreenOrigin = position.offscreenOrigin(
+                for: size,
+                on: screen,
+                padding: padding,
+                shadowMargin: shadowMargin
+            )
             isAnimating = true
             NSAnimationContext.runAnimationGroup({ context in
                 context.duration = QuickAccessAnimations.panelExitDuration
@@ -126,7 +150,12 @@ final class QuickAccessPanelController {
     private func repositionPanel() {
         guard let panel, !isAnimating else { return }
         let screen = ScreenUtility.activeScreen()
-        let origin = position.calculateOrigin(for: panel.frame.size, on: screen, padding: padding)
+        let origin = position.calculateOrigin(
+            for: panel.frame.size,
+            on: screen,
+            padding: padding,
+            shadowMargin: shadowMargin
+        )
 
         if reduceMotion {
             panel.setFrameOrigin(origin)

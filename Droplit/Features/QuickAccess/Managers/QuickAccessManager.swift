@@ -9,8 +9,20 @@ final class QuickAccessManager: ObservableObject {
 
     @Published private(set) var items: [QuickAccessItem] = []
     @Published private(set) var isDropPlaceholderVisible = false
+    @Published private(set) var pendingDropSummary: QuickAccessPendingDropSummary?
     @Published private(set) var maximumConcurrentOptimizations: Int = 3
     @Published private(set) var holdTriggerDuration: TimeInterval = 1
+    @Published var presentationStyle: QuickAccessPresentationStyle = .stack {
+        didSet {
+            guard presentationStyle != oldValue else { return }
+            UserDefaults.standard.set(presentationStyle.rawValue, forKey: Keys.presentationStyle)
+            if presentationStyle != .box, stagedCount > 0 {
+                processAllStagedItems()
+                return
+            }
+            refreshPanel()
+        }
+    }
     @Published var completedCardDisplayDuration: QuickAccessCompletedCardDisplayDuration = .fifteenSeconds {
         didSet {
             guard completedCardDisplayDuration != oldValue else { return }
@@ -44,40 +56,21 @@ final class QuickAccessManager: ObservableObject {
         }
     }
 
-    var visibleCardCount: Int {
-        floatingItemCount + overflowCardCount + (isDropPlaceholderVisible ? 1 : 0)
-    }
-
-    var floatingItems: [QuickAccessItem] {
-        Array(items.prefix(QuickAccessLayout.maximumFloatingItems))
-    }
-
-    var hiddenFloatingItemCount: Int {
-        max(items.count - floatingItems.count, 0)
-    }
-
-    var hasOverflowCard: Bool {
-        hiddenFloatingItemCount > 0
-    }
-
     var queuedCount: Int {
         items.filter { $0.state == .queued }.count
+    }
+
+    var stagedCount: Int {
+        items.filter { $0.state == .staged }.count
     }
 
     var processingCount: Int {
         items.filter { $0.state == .processing }.count
     }
 
-    var completedCount: Int {
-        items.filter { $0.state == .completed }.count
-    }
-
-    var failedCount: Int {
-        items.filter { $0.state == .failed }.count
-    }
-
     private enum Keys {
         static let position = "quickAccess.position"
+        static let presentationStyle = "quickAccess.presentationStyle"
         static let triggerInteraction = "quickAccess.triggerInteraction"
         static let holdTriggerDuration = "quickAccess.holdTriggerDuration"
         static let maximumConcurrentOptimizations = "quickAccess.maximumConcurrentOptimizations"
@@ -115,6 +108,10 @@ final class QuickAccessManager: ObservableObject {
         if let raw = UserDefaults.standard.string(forKey: Keys.position),
            let saved = QuickAccessPosition(rawValue: raw) {
             position = saved
+        }
+        if let raw = UserDefaults.standard.string(forKey: Keys.presentationStyle),
+           let saved = QuickAccessPresentationStyle(rawValue: raw) {
+            presentationStyle = saved
         }
         if let raw = UserDefaults.standard.string(forKey: Keys.triggerInteraction),
            let saved = QuickAccessTriggerInteraction(rawValue: raw) {
@@ -202,6 +199,19 @@ final class QuickAccessManager: ObservableObject {
         showDropPlaceholder(shouldTimeout: true)
     }
 
+    func dismissQuickAccessSurface() {
+        placeholderTimeoutTask?.cancel()
+        placeholderTimeoutTask = nil
+
+        if isDropPlaceholderVisible {
+            withAnimation(QuickAccessAnimations.cardRemove) {
+                isDropPlaceholderVisible = false
+            }
+        }
+
+        refreshPanel()
+    }
+
     private func showDropPlaceholder(shouldTimeout: Bool) {
         placeholderTimeoutTask?.cancel()
         withAnimation(QuickAccessAnimations.cardInsert) {
@@ -214,6 +224,18 @@ final class QuickAccessManager: ObservableObject {
     }
 
     func ingestDroppedURLs(_ urls: [URL]) {
+        ingestDroppedURLs(urls, initialState: .queued, startsAutomatically: true)
+    }
+
+    func stageDroppedURLs(_ urls: [URL]) {
+        ingestDroppedURLs(urls, initialState: .staged, startsAutomatically: false)
+    }
+
+    private func ingestDroppedURLs(
+        _ urls: [URL],
+        initialState: QuickAccessJobState,
+        startsAutomatically: Bool
+    ) {
         let supported = urls.filter { QuickAccessFileKind.detect(from: $0).isSupported }
         guard !supported.isEmpty else { return }
 
@@ -224,7 +246,11 @@ final class QuickAccessManager: ObservableObject {
 
         for url in supported {
             Task { [weak self] in
-                await self?.addOptimizationJob(for: url)
+                await self?.addOptimizationJob(
+                    for: url,
+                    initialState: initialState,
+                    startsAutomatically: startsAutomatically
+                )
             }
         }
     }
@@ -264,6 +290,25 @@ final class QuickAccessManager: ObservableObject {
         }
         refreshPanel()
         schedulePendingJobs()
+    }
+
+    func removeAllItems() {
+        processTasks.values.forEach { $0.cancel() }
+        thumbnailTasks.values.forEach { $0.cancel() }
+        elapsedTasks.values.forEach { $0.cancel() }
+        completedDismissTasks.values.forEach { $0.cancel() }
+        processTasks.removeAll()
+        thumbnailTasks.removeAll()
+        elapsedTasks.removeAll()
+        completedDismissTasks.removeAll()
+        placeholderTimeoutTask?.cancel()
+        placeholderTimeoutTask = nil
+
+        withAnimation(QuickAccessAnimations.cardRemove) {
+            items.removeAll()
+            isDropPlaceholderVisible = false
+        }
+        refreshPanel()
     }
 
     func revealOutput(for id: UUID) {
@@ -312,6 +357,28 @@ final class QuickAccessManager: ObservableObject {
         startElapsedTicker(for: id)
         startConversion(for: id, url: items[index].sourceURL, target: target)
         refreshPanel()
+    }
+
+    func processAllStagedItems() {
+        let stagedIDs = items
+            .filter { $0.state == .staged }
+            .map(\.id)
+        guard !stagedIDs.isEmpty else { return }
+
+        for id in stagedIDs {
+            guard let index = items.firstIndex(where: { $0.id == id }) else { continue }
+            items[index].state = .queued
+            items[index].elapsed = 0
+            items[index].progress = nil
+            items[index].optimizedBytes = nil
+            items[index].outputURL = nil
+            items[index].failureMessage = nil
+            items[index].activeOperationName = "Optimizing"
+            items[index].activeConversionTarget = items[index].sourceConversionTarget
+        }
+
+        refreshPanel()
+        schedulePendingJobs()
     }
 
     private func recordDrag(location: CGPoint, timestamp: TimeInterval) {
@@ -395,8 +462,10 @@ final class QuickAccessManager: ObservableObject {
         let changeCount = pasteboard.changeCount
         if currentDragPasteboardChangeCount != changeCount {
             currentDragPasteboardChangeCount = changeCount
-            isCurrentDragPayloadOptimizable = changeCount != lastCompletedDragPasteboardChangeCount
-                && QuickAccessPasteboardPayload.hasOptimizablePayload(pasteboard)
+            pendingDropSummary = changeCount == lastCompletedDragPasteboardChangeCount
+                ? nil
+                : QuickAccessPasteboardPayload.pendingDropSummary(from: pasteboard)
+            isCurrentDragPayloadOptimizable = pendingDropSummary != nil
             if !isCurrentDragPayloadOptimizable {
                 holdTriggerTask?.cancel()
                 holdTriggerTask = nil
@@ -413,9 +482,14 @@ final class QuickAccessManager: ObservableObject {
         }
         currentDragPasteboardChangeCount = nil
         isCurrentDragPayloadOptimizable = false
+        pendingDropSummary = nil
     }
 
-    private func addOptimizationJob(for url: URL) async {
+    private func addOptimizationJob(
+        for url: URL,
+        initialState: QuickAccessJobState,
+        startsAutomatically: Bool
+    ) async {
         let kind = QuickAccessFileKind.detect(from: url)
         let originalBytes = fileSize(at: url)
         let placeholderThumbnail = QuickAccessThumbnailGenerator.placeholderThumbnail(systemImage: kind.systemImage)
@@ -425,7 +499,8 @@ final class QuickAccessManager: ObservableObject {
             thumbnail: placeholderThumbnail,
             originalBytes: originalBytes,
             mediaDuration: nil,
-            pixelSize: nil
+            pixelSize: nil,
+            state: initialState
         )
         let itemID = item.id
 
@@ -435,7 +510,9 @@ final class QuickAccessManager: ObservableObject {
         }
 
         refreshPanel()
-        schedulePendingJobs()
+        if startsAutomatically {
+            schedulePendingJobs()
+        }
 
         thumbnailTasks[itemID] = Task { [weak self] in
             let thumbnail = await QuickAccessThumbnailGenerator.generate(from: url, kind: kind)
@@ -620,22 +697,22 @@ final class QuickAccessManager: ObservableObject {
     }
 
     private func refreshPanel() {
-        if visibleCardCount == 0 {
+        let metrics = presentationMetrics
+        if metrics.visibleElementCount == 0 {
             panelController.hide()
             return
         }
 
-        let size = fixedPanelSize
-        let activeHeight = activeContentHeight
         if panelController.isVisible {
-            panelController.updateInteractionMetrics(activeContentHeight: activeHeight)
-            panelController.updateSize(size)
+            panelController.updateInteractionMetrics(activeContentHeight: metrics.activeContentHeight)
+            panelController.updateSize(metrics.panelSize, shadowMargin: metrics.shadowMargin)
         } else {
             panelController.show(
-                QuickAccessStackView(manager: self),
-                size: size,
+                QuickAccessPresentationView(manager: self),
+                size: metrics.panelSize,
                 position: position,
-                activeContentHeight: activeHeight
+                activeContentHeight: metrics.activeContentHeight,
+                shadowMargin: metrics.shadowMargin
             )
         }
     }
@@ -643,32 +720,6 @@ final class QuickAccessManager: ObservableObject {
     private func fileSize(at url: URL) -> Int64 {
         let values = try? url.resourceValues(forKeys: [.fileSizeKey])
         return Int64(values?.fileSize ?? 0)
-    }
-
-    private var floatingItemCount: Int {
-        floatingItems.count
-    }
-
-    private var floatingConversionActionRowCount: Int {
-        floatingItems.filter(\.hasConversionTargets).count
-    }
-
-    private var overflowCardCount: Int {
-        hasOverflowCard ? 1 : 0
-    }
-
-    private var activeContentHeight: CGFloat {
-        let contentSize = QuickAccessLayout.panelSize(
-            itemCardCount: floatingItemCount,
-            conversionActionRowCount: floatingConversionActionRowCount,
-            dropPlaceholderCount: isDropPlaceholderVisible ? 1 : 0,
-            includesOverflowCard: hasOverflowCard
-        )
-        return min(contentSize.height, fixedPanelSize.height)
-    }
-
-    private var fixedPanelSize: CGSize {
-        QuickAccessLayout.fixedPanelSize(includesDropPlaceholder: isDropPlaceholderVisible)
     }
 
     private static func clampConcurrency(_ value: Int) -> Int {

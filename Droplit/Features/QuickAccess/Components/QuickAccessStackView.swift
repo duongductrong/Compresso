@@ -1,12 +1,13 @@
 import SwiftUI
 
 struct QuickAccessStackView: View {
-    @ObservedObject var manager: QuickAccessManager
+    let context: QuickAccessPresentationContext
+    let actions: QuickAccessPresentationActions
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: QuickAccessLayout.cardSpacing) {
-            if manager.position.isTopEdge {
+            if context.position.isTopEdge {
                 positionedCards
                 Spacer(minLength: 0)
             } else {
@@ -22,39 +23,41 @@ struct QuickAccessStackView: View {
     }
 
     private var panelSize: CGSize {
-        QuickAccessLayout.fixedPanelSize(includesDropPlaceholder: manager.isDropPlaceholderVisible)
+        QuickAccessLayout.fixedStackPanelSize(
+            includesDropPlaceholder: context.isDropPlaceholderVisible
+        )
     }
 
     @ViewBuilder
     private var positionedCards: some View {
-        if manager.position.isTopEdge {
-            if manager.isDropPlaceholderVisible {
-                QuickAccessDropZoneCardView(manager: manager)
+        if context.position.isTopEdge {
+            if context.isDropPlaceholderVisible {
+                QuickAccessDropZoneCardView(onDrop: actions.ingestDroppedURLs)
                     .transition(cardTransition)
             }
 
-            ForEach(floatingItemsInVisualOrder) { item in
+            ForEach(stackItemsInVisualOrder) { item in
                 cardView(for: item)
             }
 
-            if manager.hasOverflowCard {
+            if hasOverflowCard {
                 QuickAccessOverflowCardView(summary: overflowSummary, reduceMotion: reduceMotion)
                     .equatable()
                     .transition(cardTransition)
             }
         } else {
-            if manager.hasOverflowCard {
+            if hasOverflowCard {
                 QuickAccessOverflowCardView(summary: overflowSummary, reduceMotion: reduceMotion)
                     .equatable()
                     .transition(cardTransition)
             }
 
-            ForEach(floatingItemsInVisualOrder) { item in
+            ForEach(stackItemsInVisualOrder) { item in
                 cardView(for: item)
             }
 
-            if manager.isDropPlaceholderVisible {
-                QuickAccessDropZoneCardView(manager: manager)
+            if context.isDropPlaceholderVisible {
+                QuickAccessDropZoneCardView(onDrop: actions.ingestDroppedURLs)
                     .transition(cardTransition)
             }
         }
@@ -63,11 +66,11 @@ struct QuickAccessStackView: View {
     private func cardView(for item: QuickAccessItem) -> some View {
         QuickAccessCardView(
             item: item,
-            position: manager.position,
-            onRemove: { id in manager.removeItem(id: id) },
-            onOpen: { id in manager.openItem(for: id) },
-            onReveal: { id in manager.revealOutput(for: id) },
-            onConvert: { id, target in manager.convertItem(id: id, to: target) },
+            position: context.position,
+            onRemove: actions.removeItem,
+            onOpen: actions.openItem,
+            onReveal: actions.revealOutput,
+            onConvert: actions.convertItem,
             reduceMotion: reduceMotion
         )
         .equatable()
@@ -87,11 +90,11 @@ struct QuickAccessStackView: View {
     }
 
     private var transitionEdge: Edge {
-        if manager.position.isTopEdge {
+        if context.position.isTopEdge {
             return .top
         }
 
-        switch manager.position.alignment {
+        switch context.position.alignment {
         case .left:
             return .leading
         case .center:
@@ -101,26 +104,44 @@ struct QuickAccessStackView: View {
         }
     }
 
-    private var floatingItemsInVisualOrder: [QuickAccessItem] {
-        if manager.position.isTopEdge {
-            return manager.floatingItems
+    private var stackItemsInVisualOrder: [QuickAccessItem] {
+        if context.position.isTopEdge {
+            return stackItems
         }
-        return Array(manager.floatingItems.reversed())
+        return Array(stackItems.reversed())
+    }
+
+    private var stackItems: [QuickAccessItem] {
+        QuickAccessStackPresentationStyle().stackItems(in: context)
+    }
+
+    private var hiddenStackItemCount: Int {
+        max(context.items.count - stackItems.count, 0)
+    }
+
+    private var hasOverflowCard: Bool {
+        hiddenStackItemCount > 0
     }
 
     private var overflowSummary: QuickAccessOverflowSummary {
         QuickAccessOverflowSummary(
-            hiddenCount: manager.hiddenFloatingItemCount,
-            processingCount: manager.processingCount,
-            queuedCount: manager.queuedCount,
-            completedCount: manager.completedCount,
-            failedCount: manager.failedCount
+            hiddenCount: hiddenStackItemCount,
+            stagedCount: countItems(in: .staged),
+            processingCount: countItems(in: .processing),
+            queuedCount: countItems(in: .queued),
+            completedCount: countItems(in: .completed),
+            failedCount: countItems(in: .failed)
         )
+    }
+
+    private func countItems(in state: QuickAccessJobState) -> Int {
+        context.items.filter { $0.state == state }.count
     }
 }
 
 private struct QuickAccessOverflowSummary: Equatable {
     let hiddenCount: Int
+    let stagedCount: Int
     let processingCount: Int
     let queuedCount: Int
     let completedCount: Int
@@ -261,6 +282,7 @@ private struct QuickAccessOverflowCardView: View, Equatable {
 
     private var summaryText: String {
         let parts = [
+            labeledCount(summary.stagedCount, "ready"),
             labeledCount(summary.processingCount, "processing"),
             labeledCount(summary.queuedCount, "queued"),
             labeledCount(summary.completedCount, "done"),

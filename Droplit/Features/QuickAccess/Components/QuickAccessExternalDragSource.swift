@@ -7,7 +7,16 @@ enum QuickAccessExternalDragSession {
         thumbnail: NSImage,
         onEnded: @escaping @MainActor (Bool) -> Void
     ) -> Bool {
-        guard FileManager.default.fileExists(atPath: fileURL.path),
+        begin(fileURLs: [fileURL], thumbnail: thumbnail, onEnded: onEnded)
+    }
+
+    static func begin(
+        fileURLs: [URL],
+        thumbnail: NSImage,
+        onEnded: @escaping @MainActor (Bool) -> Void
+    ) -> Bool {
+        let existingFileURLs = fileURLs.filter { FileManager.default.fileExists(atPath: $0.path) }
+        guard !existingFileURLs.isEmpty,
               let event = NSApp.currentEvent,
               let contentView = dragContentView(for: event) else {
             return false
@@ -22,21 +31,25 @@ enum QuickAccessExternalDragSession {
         }
         QuickAccessExternalDragRegistry.retain(source, for: dragID)
 
-        let dragItem = NSDraggingItem(pasteboardWriter: fileURL as NSURL)
-        let dragImage = makeDragImage(from: thumbnail)
+        let dragImage = makeDragImage(from: thumbnail, count: existingFileURLs.count)
         let mouseLocation = contentView.convert(event.locationInWindow, from: nil)
-        dragItem.setDraggingFrame(
-            NSRect(
-                x: mouseLocation.x - dragImage.size.width / 2,
-                y: mouseLocation.y - dragImage.size.height / 2,
-                width: dragImage.size.width,
-                height: dragImage.size.height
-            ),
-            contents: dragImage
-        )
+        let dragItems = existingFileURLs.enumerated().map { index, fileURL in
+            let dragItem = NSDraggingItem(pasteboardWriter: fileURL as NSURL)
+            let offset = CGFloat(index) * 4
+            dragItem.setDraggingFrame(
+                NSRect(
+                    x: mouseLocation.x - dragImage.size.width / 2 + offset,
+                    y: mouseLocation.y - dragImage.size.height / 2 - offset,
+                    width: dragImage.size.width,
+                    height: dragImage.size.height
+                ),
+                contents: dragImage
+            )
+            return dragItem
+        }
 
         let session = contentView.beginDraggingSession(
-            with: [dragItem],
+            with: dragItems,
             event: event,
             source: source
         )
@@ -54,7 +67,7 @@ enum QuickAccessExternalDragSession {
         return NSApp.windows.first(where: \.isVisible)?.contentView
     }
 
-    private static func makeDragImage(from thumbnail: NSImage) -> NSImage {
+    private static func makeDragImage(from thumbnail: NSImage, count: Int) -> NSImage {
         let imageSize = dragImageSize(for: thumbnail.size)
         let image = NSImage(size: imageSize)
         image.lockFocus()
@@ -65,8 +78,40 @@ enum QuickAccessExternalDragSession {
             operation: .sourceOver,
             fraction: 0.84
         )
+        if count > 1 {
+            drawCountBadge(count, in: imageSize)
+        }
         image.unlockFocus()
         return image
+    }
+
+    private static func drawCountBadge(_ count: Int, in imageSize: NSSize) {
+        let label = "\(count)" as NSString
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 11, weight: .semibold),
+            .foregroundColor: NSColor.white
+        ]
+        let textSize = label.size(withAttributes: attributes)
+        let badgeSize = NSSize(width: max(textSize.width + 12, 22), height: 20)
+        let badgeRect = NSRect(
+            x: imageSize.width - badgeSize.width - 3,
+            y: imageSize.height - badgeSize.height - 3,
+            width: badgeSize.width,
+            height: badgeSize.height
+        )
+
+        NSColor.black.withAlphaComponent(0.62).setFill()
+        NSBezierPath(roundedRect: badgeRect, xRadius: 10, yRadius: 10).fill()
+
+        label.draw(
+            in: NSRect(
+                x: badgeRect.midX - textSize.width / 2,
+                y: badgeRect.midY - textSize.height / 2,
+                width: textSize.width,
+                height: textSize.height
+            ),
+            withAttributes: attributes
+        )
     }
 
     private static func dragImageSize(for sourceSize: NSSize) -> NSSize {

@@ -36,6 +36,19 @@ struct QuickAccessSettingsView: View {
 
                 DroplitSettingsDivider()
                 DroplitSettingsControlRow(
+                    title: "Style",
+                    subtitle: quickAccess.presentationStyle.description
+                ) {
+                    DroplitSettingsMenuPicker(selection: $quickAccess.presentationStyle) {
+                        ForEach(QuickAccessPresentationStyle.allCases) { style in
+                            Text(style.displayName)
+                                .tag(style)
+                        }
+                    }
+                }
+
+                DroplitSettingsDivider()
+                DroplitSettingsControlRow(
                     title: "Edge",
                     subtitle: "Where the panel attaches"
                 ) {

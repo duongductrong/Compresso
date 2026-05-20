@@ -57,6 +57,10 @@ Droplit/
 
     QuickAccess/
       Components/
+        QuickAccessBoxActionMenu.swift
+        QuickAccessBoxEmptyStateView.swift
+        QuickAccessBoxPreviewView.swift
+        QuickAccessBoxView.swift
         QuickAccessCardView.swift
         QuickAccessDropReceiverView.swift
         QuickAccessDropZoneCardView.swift
@@ -71,6 +75,10 @@ Droplit/
         QuickAccessAnimations.swift
         QuickAccessShakeDetector.swift
         QuickAccessThumbnailGenerator.swift
+      Styles/
+        QuickAccessBoxPresentationStyle.swift
+        QuickAccessPresentationStyle.swift
+        QuickAccessStackPresentationStyle.swift
       QuickAccessPanel.swift
 
   Services/
@@ -106,7 +114,7 @@ docs/
 | `Features/Onboarding/` | First-run welcome, required optimizer tool setup, optional permission setup, and completion transition |
 | `Features/Settings/` | Main System Settings-style configuration shell, sidebar, detail pages, shared grouped rows |
 | `Features/OutputSettings/` | Output destination toggle, folder picker, temp retention controls |
-| `Features/QuickAccess/` | Floating stack, placeholder card, drag/drop, card visuals, trigger detection |
+| `Features/QuickAccess/` | Floating Quick Access presentation styles, placeholder card, drag/drop, card visuals, trigger detection |
 | `Services/Optimization/` | Local CLI tool resolution, Homebrew bootstrap, output destination resolution, temp cleanup, optimizer process execution |
 | `Support/` | Small platform helpers and macOS version compatibility wrappers |
 | `docs/DESIGN_TOKENS.md` | Shared visual tokens and state treatment |
@@ -140,7 +148,8 @@ docs/
 3. `QuickAccessManager` listens to local/global drag events.
 4. `QuickAccessManager` checks the active drag pasteboard for supported optimizer payloads, then evaluates the configured trigger interaction.
    Default is shake via `QuickAccessShakeDetector`; hold starts a timer using the configured delay.
-5. `QuickAccessPanelController` shows a non-activating floating `NSPanel`.
+   The same lightweight pasteboard pass also records a pending drop summary such as `4 Images` for presentation styles that show aggregate drag context.
+5. `QuickAccessPanelController` asks the configured `QuickAccessPresentationStyle` for panel metrics and shows a non-activating floating `NSPanel`.
 6. The panel position combines top/bottom edge with left/center/right alignment.
    Bottom placement anchors the stack to the lower edge and grows upward; top placement enters from the upper edge, anchors high, and grows downward.
    Top placement compensates for menu/notch safe area so the visual inset to the nearest Quick Access card edge matches bottom placement.
@@ -163,11 +172,21 @@ docs/
 23. Conversion actions always read `QuickAccessItem.sourceURL`, not the optimized output URL, so repeated switches do not chain from a compressed/downscaled derivative.
 24. Swipe a Quick Access result card left or right to dismiss that card.
 25. Drag a completed Quick Access card away from its dismiss direction to drop the optimized or converted output into external apps.
-26. External card drag uses an AppKit `NSDraggingSession` with the output file URL as an `NSURL` pasteboard writer for broad Finder, native app, and browser compatibility.
+26. External drag uses an AppKit `NSDraggingSession` with output file URLs as `NSURL` pasteboard writers for broad Finder, native app, and browser compatibility.
+    Stack cards drag one completed output, Box preview drags all completed outputs together, and Box popover cells drag their own completed output.
 27. Double-click a card to open the optimized or converted output, falling back to the source file when output is unavailable.
 28. Completed Quick Access cards stay visible for the configured result-card duration, defaulting to 15 seconds; selecting Never keeps them visible until removed.
 29. When enabled in Quick Access settings, each finished optimized output file is copied to the system clipboard.
-30. The floating Quick Access stack shows the newest cards plus an overflow summary when the queue is larger than the panel should display.
+30. The default Stack presentation shows the newest cards plus an overflow summary when the queue is larger than the panel should display.
+31. The Box presentation shows a compact dark rounded square, top chrome controls, real-item layered media preview, and an item count pill while reusing the same trigger and position settings.
+    Before actual dropped items exist, Box shows an empty drop CTA instead of the stacked preview.
+    Once items exist, Box stacks at most the newest three real `QuickAccessItem` thumbnails and does not synthesize mock preview layers.
+32. Box drops stage items first; the top-right run button uses the same chrome styling as close, opens a compact batch action popover, and then moves the staged batch into the optimization queue after user selection.
+    While the batch runs, Box surfaces completion progress in the count pill and per-item status in the grid popover.
+    Completed Box batches show total original-to-optimized size in the count pill and popover header.
+    The top-left close clears every dropped item, and the bottom count pill opens a centered three-column media-only grid popover with clipped thumbnails, truncated names, and compact file-type/status/size text.
+33. Quick Access presentation styles own their own visible item selection, panel size, active hit region height, outer shadow margin, and SwiftUI root view.
+34. To add another visual treatment, add a `QuickAccessPresentationStyle` case and a `QuickAccessPresentationStyleProviding` implementation that maps the shared context/actions into its own view.
 
 Output destination and retention are changed from the Settings window Output configuration.
 Parallel job count is changed from the Settings window Concurrency configuration.
@@ -182,7 +201,7 @@ Parallel job count is changed from the Settings window Concurrency configuration
 6. `DroplitSettingsPage` provides the shared heading plus scroll layout for every detail page.
 7. `DroplitSettingsGroup`, `DroplitSettingsControlRow`, `DroplitSettingsValueRow`, and `DroplitSettingsAlignedRow` provide the shared native settings row treatment.
 8. `InfoSettingsView` About is the default standalone landing page.
-9. `QuickAccessSettingsView` owns Quick Access trigger, placement, after-processing, preview, and concurrency controls.
+9. `QuickAccessSettingsView` owns Quick Access style, trigger, placement, after-processing, preview, and concurrency controls.
 10. `OutputSettingsView` owns save location, destination folder, temp retention, and conversion output behavior.
 11. `ToolsSettingsView` owns optimizer status and Homebrew install action.
 12. `QueueSettingsView` owns the Media Optimization status, remove actions, and file import entry point.

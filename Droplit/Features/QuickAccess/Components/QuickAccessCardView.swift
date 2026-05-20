@@ -65,6 +65,8 @@ struct QuickAccessCardView: View, Equatable {
                 Spacer(minLength: 0)
 
                 switch item.state {
+                case .staged:
+                    stagedOverlay
                 case .queued:
                     queuedOverlay
                 case .processing:
@@ -331,7 +333,7 @@ struct QuickAccessCardView: View, Equatable {
             .clipped()
             .saturation(0.72)
             .brightness(-0.04)
-            .overlay(Color.black.opacity(item.state == .processing || item.state == .queued ? 0.34 : 0.20))
+            .overlay(Color.black.opacity(item.state.isWaitingOrProcessing ? 0.34 : 0.20))
     }
 
     private var readabilityOverlay: some View {
@@ -444,6 +446,14 @@ struct QuickAccessCardView: View, Equatable {
     }
 
     private var queuedOverlay: some View {
+        waitingOverlay(title: "Queued", systemImage: "clock")
+    }
+
+    private var stagedOverlay: some View {
+        waitingOverlay(title: "Ready", systemImage: "tray.full")
+    }
+
+    private func waitingOverlay(title: String, systemImage: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(item.displayTitle)
                 .font(.system(size: 10, weight: .medium))
@@ -451,13 +461,13 @@ struct QuickAccessCardView: View, Equatable {
                 .lineLimit(1)
                 .truncationMode(.middle)
 
-            Text("Queued")
+            Text(title)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white)
                 .lineLimit(1)
 
             HStack(spacing: 6) {
-                Image(systemName: "clock")
+                Image(systemName: systemImage)
                     .font(.system(size: 10, weight: .semibold))
                 Text(item.originalSizeText)
             }
@@ -564,6 +574,17 @@ private struct ProgressBar: View {
     private func filledWidth(in totalWidth: CGFloat) -> CGFloat {
         let value = progress.map { min(max($0, 0.05), 1) } ?? phase
         return totalWidth * value
+    }
+}
+
+private extension QuickAccessJobState {
+    var isWaitingOrProcessing: Bool {
+        switch self {
+        case .staged, .queued, .processing:
+            return true
+        case .completed, .failed:
+            return false
+        }
     }
 }
 

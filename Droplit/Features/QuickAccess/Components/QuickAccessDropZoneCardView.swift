@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct QuickAccessDropZoneCardView: View {
-    @ObservedObject var manager: QuickAccessManager
+    let onDrop: ([URL]) -> Void
     @State private var isTargeted = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -37,7 +37,7 @@ struct QuickAccessDropZoneCardView: View {
             .animation(QuickAccessAnimations.hoverOverlay, value: isTargeted)
 
             QuickAccessDropReceiverView(isTargeted: $isTargeted) { urls in
-                manager.ingestDroppedURLs(urls)
+                onDrop(urls)
             }
         }
         .frame(width: QuickAccessLayout.cardWidth, height: QuickAccessLayout.cardHeight)

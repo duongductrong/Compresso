@@ -87,6 +87,10 @@ material treatment:
 | `size.iconButton.hit` | 30 | Card remove/stop invisible hit area |
 | `size.kindBadge.width` | 24 | File kind badge |
 | `size.kindBadge.height` | 16 | File kind badge |
+| `size.quickAccessBox.width` | 206 | Box style rounded square surface |
+| `size.quickAccessBox.height` | 206 | Box style rounded square surface |
+| `size.quickAccessBox.chromeButton` | 24 | Box close and more controls |
+| `size.quickAccessBox.countPillHeight` | 28 | Box bottom count pill |
 
 ## Spacing
 
@@ -103,6 +107,7 @@ material treatment:
 | Token | Value | Usage |
 | --- | --- | --- |
 | `radius.card` | 14 continuous | Quick Access cards |
+| `radius.box` | 17 continuous | Box style container |
 | `radius.badge` | 6 continuous | File kind badge |
 | `radius.buttonPill` | capsule | Conversion format buttons |
 
@@ -122,6 +127,7 @@ material treatment:
 | --- | --- | --- |
 | `shadow.quickAccessCard.ambient` | 29-34 radius, 12-15 y, black 8-11% | Main floating card lift |
 | `shadow.quickAccessCard.contact` | 8-11 radius, 3-4 y, black 4-5.5% | Close contact shadow under the card |
+| `shadow.quickAccessBox` | 22-28 radius, 16 y, black 24-32% | Box style floating surface lift |
 
 ## Implementation Map
 
@@ -133,9 +139,21 @@ material treatment:
 - sidebar rows stay flat and Mail-like: one SF Symbol, one title line, one optional secondary line
 - detail pages use `DroplitSettingsPage` for heading plus scroll layout
 - grouped settings content uses `DroplitSettingsGroup`, `DroplitSettingsControlRow`, `DroplitSettingsValueRow`, `DroplitSettingsMenuPicker`, and a shared aligned-row layout
+- Quick Access style selection uses `QuickAccessPresentationStyle`; Stack is the current/default implementation and Box is the compact square implementation.
+- Quick Access presentation styles provide panel metrics and SwiftUI content through `QuickAccessPresentationStyleProviding`.
+- Box style uses `QuickAccessBoxPresentationStyle` for metrics and `QuickAccessBoxView` plus `QuickAccessBoxPreviewView` for its rounded square, top chrome controls, real-item layered preview, and item count pill.
+- Box shows `QuickAccessBoxEmptyStateView` as its center CTA until real dropped items exist; pending drag state only updates the empty CTA copy and does not show the bottom pill.
+- Box preview never creates mock filler layers: one item renders one card, two items render two cards, and three or more items render the newest three actual queue items back-to-front.
+- Box drops create staged `QuickAccessItem` values and wait for the top-right batch action before moving them into the optimization queue.
+- Box top-right run control reuses the same chrome button treatment as close, and opens a compact batch action popover with current status before optimization starts; while running, the count pill reports finished progress such as `2/4 Done`.
+- Box top-left close clears the full batch, and the bottom count pill opens `QuickAccessBoxItemsPopoverView`, a centered three-column media-only grid of clipped thumbnails with truncated names plus compact file-type, status, and per-item `original -> optimized` size labels.
+- Box center preview uses smaller borderless clipped thumbnails, preserving the real-item stack without overlapping the top chrome or bottom count pill.
+- Box count pill appears only after actual items exist, prefers the active item count while running, and switches to total `original -> optimized` size after completed outputs exist.
+- Box preview supports dragging all completed optimized outputs together; each completed popover item supports dragging its own optimized output.
 - Quick Access after-processing settings use native menu picker options for completed-card display duration and a native switch for auto-copy.
 - Quick Access dimensions live in `QuickAccessLayout`.
 - Quick Access shadow allowance lives in `QuickAccessLayout.shadowMargin`.
+- Box style dimensions live in `QuickAccessBoxLayout`, including a 206 x 206 surface and 22-point shadow margin.
 - Quick Access card shadows use `quickAccessCardShadow(isRaised:)`.
 - Quick Access placement uses `QuickAccessPanelEdge` plus `QuickAccessPanelAlignment`; top placement enters from the upper edge and mirrors bottom stack anchoring.
 - Top placement compensates for menu/notch safe area so the visual card-boundary inset matches bottom placement; `shadowMargin` only extends the transparent panel canvas.
