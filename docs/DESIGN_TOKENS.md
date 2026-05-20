@@ -133,6 +133,7 @@ material treatment:
 - sidebar rows stay flat and Mail-like: one SF Symbol, one title line, one optional secondary line
 - detail pages use `DroplitSettingsPage` for heading plus scroll layout
 - grouped settings content uses `DroplitSettingsGroup`, `DroplitSettingsControlRow`, `DroplitSettingsValueRow`, `DroplitSettingsMenuPicker`, and a shared aligned-row layout
+- Quick Access after-processing settings use native menu picker options for completed-card display duration and a native switch for auto-copy.
 - Quick Access dimensions live in `QuickAccessLayout`.
 - Quick Access shadow allowance lives in `QuickAccessLayout.shadowMargin`.
 - Quick Access card shadows use `quickAccessCardShadow(isRaised:)`.

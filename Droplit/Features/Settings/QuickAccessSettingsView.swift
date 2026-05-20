@@ -62,6 +62,33 @@ struct QuickAccessSettingsView: View {
             }
 
             DroplitSettingsGroup(
+                "After Processing",
+                description: "Choose what happens after a Quick Access job finishes."
+            ) {
+                DroplitSettingsControlRow(
+                    title: "Show Result Card",
+                    subtitle: "Completed card visibility"
+                ) {
+                    DroplitSettingsMenuPicker(selection: $quickAccess.completedCardDisplayDuration) {
+                        ForEach(QuickAccessCompletedCardDisplayDuration.allCases) { duration in
+                            Text(duration.displayName)
+                                .tag(duration)
+                        }
+                    }
+                }
+
+                DroplitSettingsDivider()
+                DroplitSettingsControlRow(
+                    title: "Auto Copy Result",
+                    subtitle: "Copy the optimized file to the clipboard when processing finishes"
+                ) {
+                    Toggle("", isOn: $quickAccess.autoCopyOptimizedOutputToClipboard)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
+            }
+
+            DroplitSettingsGroup(
                 "Capacity",
                 description: "Control optimization throughput and preview the floating Quick Access surface."
             ) {

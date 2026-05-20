@@ -11,6 +11,19 @@ final class QuickAccessManager: ObservableObject {
     @Published private(set) var isDropPlaceholderVisible = false
     @Published private(set) var maximumConcurrentOptimizations: Int = 3
     @Published private(set) var holdTriggerDuration: TimeInterval = 1
+    @Published var completedCardDisplayDuration: QuickAccessCompletedCardDisplayDuration = .fifteenSeconds {
+        didSet {
+            guard completedCardDisplayDuration != oldValue else { return }
+            UserDefaults.standard.set(completedCardDisplayDuration.rawValue, forKey: Keys.completedCardDisplayDuration)
+            rescheduleCompletedDismisses()
+        }
+    }
+    @Published var autoCopyOptimizedOutputToClipboard = false {
+        didSet {
+            guard autoCopyOptimizedOutputToClipboard != oldValue else { return }
+            UserDefaults.standard.set(autoCopyOptimizedOutputToClipboard, forKey: Keys.autoCopyOptimizedOutputToClipboard)
+        }
+    }
     @Published var triggerInteraction: QuickAccessTriggerInteraction = .shake {
         didSet {
             guard triggerInteraction != oldValue else { return }
@@ -68,6 +81,8 @@ final class QuickAccessManager: ObservableObject {
         static let triggerInteraction = "quickAccess.triggerInteraction"
         static let holdTriggerDuration = "quickAccess.holdTriggerDuration"
         static let maximumConcurrentOptimizations = "quickAccess.maximumConcurrentOptimizations"
+        static let completedCardDisplayDuration = "quickAccess.completedCardDisplayDuration"
+        static let autoCopyOptimizedOutputToClipboard = "quickAccess.autoCopyOptimizedOutputToClipboard"
     }
 
     private static let allowedConcurrencyRange = 1...12
@@ -93,7 +108,6 @@ final class QuickAccessManager: ObservableObject {
 
     private let placeholderManualTimeout: UInt64 = 12_000_000_000
     private let placeholderPostDragTimeout: UInt64 = 2_000_000_000
-    private let completedCardDismissTimeout: UInt64 = 15_000_000_000
     private let minimumDragEventInterval: TimeInterval = 1.0 / 60.0
     private let elapsedTickerInterval: UInt64 = 250_000_000
 
@@ -114,6 +128,13 @@ final class QuickAccessManager: ObservableObject {
         if savedConcurrency > 0 {
             maximumConcurrentOptimizations = Self.clampConcurrency(savedConcurrency)
         }
+        if let raw = UserDefaults.standard.string(forKey: Keys.completedCardDisplayDuration),
+           let saved = QuickAccessCompletedCardDisplayDuration(rawValue: raw) {
+            completedCardDisplayDuration = saved
+        }
+        autoCopyOptimizedOutputToClipboard = UserDefaults.standard.bool(
+            forKey: Keys.autoCopyOptimizedOutputToClipboard
+        )
     }
 
     func start() {
@@ -498,6 +519,7 @@ final class QuickAccessManager: ObservableObject {
         if let pixelSize = result.pixelSize {
             items[index].pixelSize = pixelSize
         }
+        copyOptimizedOutputToClipboardIfNeeded(result.outputURL)
         scheduleCompletedDismiss(for: id)
         schedulePendingJobs()
     }
@@ -517,11 +539,35 @@ final class QuickAccessManager: ObservableObject {
 
     private func scheduleCompletedDismiss(for id: UUID) {
         completedDismissTasks[id]?.cancel()
+        guard let timeout = completedCardDisplayDuration.timeoutNanoseconds else {
+            completedDismissTasks[id] = nil
+            return
+        }
         completedDismissTasks[id] = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: self?.completedCardDismissTimeout ?? 15_000_000_000)
+            try? await Task.sleep(nanoseconds: timeout)
             guard !Task.isCancelled else { return }
             self?.dismissCompletedItem(id: id)
         }
+    }
+
+    private func rescheduleCompletedDismisses() {
+        completedDismissTasks.values.forEach { $0.cancel() }
+        completedDismissTasks.removeAll()
+
+        for item in items where item.state == .completed {
+            scheduleCompletedDismiss(for: item.id)
+        }
+    }
+
+    private func copyOptimizedOutputToClipboardIfNeeded(_ outputURL: URL) {
+        guard autoCopyOptimizedOutputToClipboard,
+              FileManager.default.fileExists(atPath: outputURL.path) else {
+            return
+        }
+
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects([outputURL as NSURL])
     }
 
     private func dismissCompletedItem(id: UUID) {

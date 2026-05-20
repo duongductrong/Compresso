@@ -206,6 +206,54 @@ nonisolated enum QuickAccessTriggerInteraction: String, CaseIterable, Codable, I
     }
 }
 
+nonisolated enum QuickAccessCompletedCardDisplayDuration: String, CaseIterable, Codable, Identifiable {
+    case fiveSeconds
+    case tenSeconds
+    case fifteenSeconds
+    case thirtySeconds
+    case sixtySeconds
+    case never
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .fiveSeconds: "5 seconds"
+        case .tenSeconds: "10 seconds"
+        case .fifteenSeconds: "15 seconds"
+        case .thirtySeconds: "30 seconds"
+        case .sixtySeconds: "60 seconds"
+        case .never: "Never"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .never:
+            return "Keep completed cards visible until you remove them"
+        default:
+            return "Hide completed cards after \(displayName)"
+        }
+    }
+
+    var timeoutNanoseconds: UInt64? {
+        switch self {
+        case .fiveSeconds:
+            return 5_000_000_000
+        case .tenSeconds:
+            return 10_000_000_000
+        case .fifteenSeconds:
+            return 15_000_000_000
+        case .thirtySeconds:
+            return 30_000_000_000
+        case .sixtySeconds:
+            return 60_000_000_000
+        case .never:
+            return nil
+        }
+    }
+}
+
 nonisolated enum QuickAccessLayout {
     static let cardWidth: CGFloat = 184
     static let cardHeight: CGFloat = 118

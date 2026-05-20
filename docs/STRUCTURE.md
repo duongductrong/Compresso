@@ -165,8 +165,9 @@ docs/
 25. Drag a completed Quick Access card away from its dismiss direction to drop the optimized or converted output into external apps.
 26. External card drag uses an AppKit `NSDraggingSession` with the output file URL as an `NSURL` pasteboard writer for broad Finder, native app, and browser compatibility.
 27. Double-click a card to open the optimized or converted output, falling back to the source file when output is unavailable.
-28. Completed Quick Access cards stay visible for 15 seconds, then auto-hide.
-29. The floating Quick Access stack shows the newest cards plus an overflow summary when the queue is larger than the panel should display.
+28. Completed Quick Access cards stay visible for the configured result-card duration, defaulting to 15 seconds; selecting Never keeps them visible until removed.
+29. When enabled in Quick Access settings, each finished optimized output file is copied to the system clipboard.
+30. The floating Quick Access stack shows the newest cards plus an overflow summary when the queue is larger than the panel should display.
 
 Output destination and retention are changed from the Settings window Output configuration.
 Parallel job count is changed from the Settings window Concurrency configuration.
@@ -181,7 +182,7 @@ Parallel job count is changed from the Settings window Concurrency configuration
 6. `DroplitSettingsPage` provides the shared heading plus scroll layout for every detail page.
 7. `DroplitSettingsGroup`, `DroplitSettingsControlRow`, `DroplitSettingsValueRow`, and `DroplitSettingsAlignedRow` provide the shared native settings row treatment.
 8. `InfoSettingsView` About is the default standalone landing page.
-9. `QuickAccessSettingsView` owns Quick Access trigger, placement, preview, and concurrency controls.
+9. `QuickAccessSettingsView` owns Quick Access trigger, placement, after-processing, preview, and concurrency controls.
 10. `OutputSettingsView` owns save location, destination folder, temp retention, and conversion output behavior.
 11. `ToolsSettingsView` owns optimizer status and Homebrew install action.
 12. `QueueSettingsView` owns the Media Optimization status, remove actions, and file import entry point.
