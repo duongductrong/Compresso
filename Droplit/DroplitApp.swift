@@ -19,6 +19,13 @@ struct DroplitApp: App {
                 .droplitHiddenWindowToolbar()
         }
         .windowStyle(.hiddenTitleBar)
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates...") {
+                    UpdaterManager.shared.checkForUpdates()
+                }
+            }
+        }
     }
 }
 

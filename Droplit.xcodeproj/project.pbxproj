@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A3F0A1002FC0000000000010 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A3F0A1002FC0000000000012 /* Sparkle */; };
 		A3D4A0012FB9F1E300C909AF /* Droplit.icon in Resources */ = {isa = PBXBuildFile; fileRef = A3D4A0002FB9F1E300C909AF /* Droplit.icon */; };
 /* End PBXBuildFile section */
 
@@ -15,9 +16,22 @@
 		A3ADD0DA2FB8ED7F00C909AF /* Droplit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Droplit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A3F0A1002FC0000000000013 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Resources/Info.plist,
+			);
+			target = A3ADD0D92FB8ED7F00C909AF /* Droplit */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A3ADD0DC2FB8ED7F00C909AF /* Droplit */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A3F0A1002FC0000000000013 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
 			path = Droplit;
 			sourceTree = "<group>";
 		};
@@ -28,6 +42,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A3F0A1002FC0000000000010 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +86,7 @@
 			);
 			name = Droplit;
 			packageProductDependencies = (
+				A3F0A1002FC0000000000012 /* Sparkle */,
 			);
 			productName = Droplit;
 			productReference = A3ADD0DA2FB8ED7F00C909AF /* Droplit.app */;
@@ -100,6 +116,9 @@
 			);
 			mainGroup = A3ADD0D12FB8ED7F00C909AF;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A3F0A1002FC0000000000011 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A3ADD0DB2FB8ED7F00C909AF /* Products */;
 			projectDirPath = "";
@@ -265,8 +284,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Droplit/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -297,8 +316,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Droplit/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -338,6 +357,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A3F0A1002FC0000000000011 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A3F0A1002FC0000000000012 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A3F0A1002FC0000000000011 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A3ADD0D22FB8ED7F00C909AF /* Project object */;
 }

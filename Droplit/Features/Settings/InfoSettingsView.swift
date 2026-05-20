@@ -38,9 +38,11 @@ struct InfoSettingsView: View {
                 DroplitSettingsDivider()
                 DroplitSettingsControlRow(
                     title: "Check for Updates",
-                    subtitle: "Manual update checks will be available in a future release."
+                    subtitle: "Droplit verifies signed releases before installing."
                 ) {
-                    Button("Check for Updates") {}
+                    Button("Check for Updates") {
+                        UpdaterManager.shared.checkForUpdates()
+                    }
                 }
             }
         default:

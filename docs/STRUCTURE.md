@@ -86,20 +86,33 @@ Droplit/
       OptimizationOutputSettings.swift
       OptimizationService.swift
       OptimizationTemporaryFileStore.swift
+    Updates/
+      UpdaterManager.swift
 
   Support/
     DroplitCompatibility.swift
     ScreenUtility.swift
+
+  Resources/
+    Info.plist
 
   ContentView.swift
   DroplitApp.swift
 
 scripts/
   build_and_run.sh
+  bump-version.sh
+  create-signing-cert.sh
+  generate-changelog.sh
+  test-update-local.sh
+  update-appcast.sh
+  update-changelog.sh
 
 docs/
   STRUCTURE.md
   DESIGN_TOKENS.md
+  RELEASES.md
+  UPDATE_TESTING.md
 
 .codex/
   environments/
@@ -116,6 +129,7 @@ docs/
 | `Features/OutputSettings/` | Output destination toggle, folder picker, temp retention controls |
 | `Features/QuickAccess/` | Floating Quick Access presentation styles, placeholder card, drag/drop, card visuals, trigger detection |
 | `Services/Optimization/` | Local CLI tool resolution, Homebrew bootstrap, output destination resolution, temp cleanup, optimizer process execution |
+| `Services/Updates/` | Sparkle updater ownership, manual update checks, and update lifecycle logging |
 | `Support/` | Small platform helpers and macOS version compatibility wrappers |
 | `docs/DESIGN_TOKENS.md` | Shared visual tokens and state treatment |
 
@@ -218,6 +232,18 @@ brew install <missing-packages>
 
 4. During install, callers can receive package-level progress for onboarding/status UI.
 5. After install completes, the Tools panel refreshes availability state.
+
+## Update Flow
+
+1. `AppDelegate` touches `UpdaterManager.shared` during launch so Sparkle starts once.
+2. `UpdaterManager` owns the only `SPUStandardUpdaterController`.
+3. The app menu and About page call `UpdaterManager.shared.checkForUpdates()`.
+4. Sparkle reads `SUFeedURL` and `SUPublicEDKey` from the built app `Info.plist`.
+5. The public appcast lives at repo root as `appcast.xml`.
+6. Release publish signs the DMG with the Sparkle EdDSA private key and writes the signature into the appcast item.
+7. Release publish compares the candidate app designated requirement against the previous release before publishing.
+8. Signing identity changes and Sparkle key changes are blocked by default because they can strand existing installations.
+9. Droplit remains non-sandboxed in this phase because optimizer CLI execution depends on the current non-sandboxed runtime model.
 
 ## Optimizer Mapping
 

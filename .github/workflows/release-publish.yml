@@ -1,0 +1,468 @@
+name: Release Publish
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release/v')
+    runs-on: macos-15
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    env:
+      HAS_DEVELOPER_ID_CERT: ${{ secrets.DEVELOPER_ID_P12 != '' && secrets.DEVELOPER_ID_PASSWORD != '' && 'true' || 'false' }}
+      HAS_SELF_SIGNED_CERT: ${{ secrets.SELF_SIGNED_CERT_P12 != '' && secrets.SELF_SIGNED_CERT_PASSWORD != '' && 'true' || 'false' }}
+      HAS_NOTARIZATION_CREDENTIALS: ${{ secrets.APPLE_ID != '' && secrets.APPLE_ID_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' && 'true' || 'false' }}
+      HAS_SPARKLE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY != '' && 'true' || 'false' }}
+      ALLOW_ADHOC_RELEASE: ${{ vars.ALLOW_ADHOC_RELEASE == 'true' && 'true' || 'false' }}
+      ALLOW_SIGNING_IDENTITY_CHANGE: ${{ vars.ALLOW_SIGNING_IDENTITY_CHANGE == 'true' && 'true' || 'false' }}
+      ALLOW_SPARKLE_KEY_CHANGE: ${{ vars.ALLOW_SPARKLE_KEY_CHANGE == 'true' && 'true' || 'false' }}
+      SELF_SIGNED_CODE_SIGN_IDENTITY: ${{ vars.SELF_SIGNED_CODE_SIGN_IDENTITY }}
+
+    steps:
+      - name: Extract version
+        id: version
+        run: |
+          set -euo pipefail
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          VERSION="${BRANCH#release/v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Release version: v${VERSION}"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: master
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          awk '/^## \[/{if(found) exit; found=1; next} found' CHANGELOG.md > build/changelog.md
+          echo "changelog_path=build/changelog.md" >> "$GITHUB_OUTPUT"
+          cat build/changelog.md
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.2"
+
+      - name: Build archive
+        run: |
+          set -euo pipefail
+          mkdir -p build
+
+          if ! xcodebuild archive \
+            -project Droplit.xcodeproj \
+            -scheme Droplit \
+            -configuration Release \
+            -archivePath build/Droplit.xcarchive \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            > build/archive.log 2>&1; then
+            tail -100 build/archive.log
+            exit 1
+          fi
+
+          tail -20 build/archive.log
+          test -d build/Droplit.xcarchive
+
+      - name: Guard release signing strategy
+        run: |
+          set -euo pipefail
+
+          if [ "${HAS_DEVELOPER_ID_CERT}" = "true" ]; then
+            echo "Signing strategy: Developer ID"
+            exit 0
+          fi
+
+          if [ "${HAS_SELF_SIGNED_CERT}" = "true" ]; then
+            echo "Signing strategy: stable self-signed certificate (${SELF_SIGNED_CODE_SIGN_IDENTITY:-Droplit Self-Signed})"
+            exit 0
+          fi
+
+          if [ "${ALLOW_ADHOC_RELEASE}" = "true" ]; then
+            echo "::warning::Ad-hoc release signing explicitly allowed"
+            exit 0
+          fi
+
+          echo "::error::Release requires Developer ID or SELF_SIGNED_CERT_* secrets. Ad-hoc is disabled by default."
+          exit 1
+
+      - name: Import signing certificate
+        if: env.HAS_DEVELOPER_ID_CERT == 'true' || env.HAS_SELF_SIGNED_CERT == 'true'
+        env:
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_PASSWORD: ${{ secrets.DEVELOPER_ID_PASSWORD }}
+          SELF_SIGNED_CERT_P12: ${{ secrets.SELF_SIGNED_CERT_P12 }}
+          SELF_SIGNED_CERT_PASSWORD: ${{ secrets.SELF_SIGNED_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          if [ "${HAS_DEVELOPER_ID_CERT}" = "true" ]; then
+            echo "$DEVELOPER_ID_P12" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+            security import "$RUNNER_TEMP/certificate.p12" -P "$DEVELOPER_ID_PASSWORD" \
+              -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          else
+            echo "$SELF_SIGNED_CERT_P12" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+            security import "$RUNNER_TEMP/certificate.p12" -P "$SELF_SIGNED_CERT_PASSWORD" \
+              -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
+          fi
+
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+      - name: Export and sign app
+        run: |
+          set -euo pipefail
+          mkdir -p build/export
+          ARCHIVE_PATH="build/Droplit.xcarchive"
+
+          if [ "${HAS_DEVELOPER_ID_CERT}" = "true" ]; then
+            cat > build/ExportOptions.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>developer-id</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+          </dict>
+          </plist>
+          PLIST
+
+            xcodebuild -exportArchive \
+              -archivePath "$ARCHIVE_PATH" \
+              -exportPath build/export \
+              -exportOptionsPlist build/ExportOptions.plist
+          else
+            ditto "$ARCHIVE_PATH/Products/Applications/Droplit.app" build/Droplit.app
+            APP_PATH="build/Droplit.app"
+            SPARKLE_FRAMEWORK="$APP_PATH/Contents/Frameworks/Sparkle.framework"
+
+            if [ "${HAS_SELF_SIGNED_CERT}" = "true" ]; then
+              SIGN_IDENTITY="${SELF_SIGNED_CODE_SIGN_IDENTITY:-Droplit Self-Signed}"
+            else
+              SIGN_IDENTITY="-"
+            fi
+
+            if [ -d "$SPARKLE_FRAMEWORK/Versions/B/XPCServices/Installer.xpc" ]; then
+              codesign --force --sign "$SIGN_IDENTITY" -o runtime --timestamp=none "$SPARKLE_FRAMEWORK/Versions/B/XPCServices/Installer.xpc"
+            fi
+            if [ -d "$SPARKLE_FRAMEWORK/Versions/B/XPCServices/Downloader.xpc" ]; then
+              codesign --force --sign "$SIGN_IDENTITY" -o runtime --preserve-metadata=entitlements --timestamp=none "$SPARKLE_FRAMEWORK/Versions/B/XPCServices/Downloader.xpc"
+            fi
+            if [ -f "$SPARKLE_FRAMEWORK/Versions/B/Autoupdate" ]; then
+              codesign --force --sign "$SIGN_IDENTITY" -o runtime --timestamp=none "$SPARKLE_FRAMEWORK/Versions/B/Autoupdate"
+            fi
+            if [ -d "$SPARKLE_FRAMEWORK/Versions/B/Updater.app" ]; then
+              codesign --force --sign "$SIGN_IDENTITY" -o runtime --timestamp=none "$SPARKLE_FRAMEWORK/Versions/B/Updater.app"
+            fi
+            if [ -d "$SPARKLE_FRAMEWORK" ]; then
+              codesign --force --sign "$SIGN_IDENTITY" -o runtime --timestamp=none "$SPARKLE_FRAMEWORK"
+            fi
+
+            codesign --force --sign "$SIGN_IDENTITY" -o runtime --timestamp=none "$APP_PATH"
+          fi
+
+      - name: Verify exported app
+        run: |
+          set -euo pipefail
+          APP_PATH="build/Droplit.app"
+          if [ -d "build/export/Droplit.app" ]; then
+            APP_PATH="build/export/Droplit.app"
+          fi
+
+          echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+          codesign --verify --deep --strict --verbose=4 "$APP_PATH"
+          codesign -dv --verbose=4 "$APP_PATH"
+          /usr/libexec/PlistBuddy -c "Print :SUPublicEDKey" "$APP_PATH/Contents/Info.plist" > build/candidate-sparkle-public-key.txt
+
+      - name: Capture candidate signing metadata
+        run: |
+          set -euo pipefail
+          codesign -dr - "$APP_PATH" 2>&1 | sed -n 's/^designated => //p' > build/candidate-designated-requirement.txt
+          codesign -dvv "$APP_PATH" > build/candidate-signature.txt 2>&1 || true
+
+          if [ ! -s build/candidate-designated-requirement.txt ]; then
+            echo "::error::Failed to extract candidate designated requirement"
+            exit 1
+          fi
+
+          cat build/candidate-designated-requirement.txt
+
+      - name: Compare signing continuity with previous release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/previous-release
+
+          PREVIOUS_TAG=$(gh release list --limit 1 --exclude-drafts --exclude-pre-releases --json tagName --jq '.[0].tagName' 2>/dev/null || true)
+          if [ -z "$PREVIOUS_TAG" ] || [ "$PREVIOUS_TAG" = "null" ]; then
+            echo "No previous GitHub release found. Skipping signing continuity comparison."
+            exit 0
+          fi
+
+          if ! gh release download "$PREVIOUS_TAG" -p 'Droplit-v*.dmg' -D build/previous-release; then
+            echo "::warning::Could not download previous Droplit DMG. Skipping continuity comparison."
+            exit 0
+          fi
+
+          PREVIOUS_DMG=$(find build/previous-release -name 'Droplit-v*.dmg' -type f | head -1)
+          if [ -z "$PREVIOUS_DMG" ]; then
+            echo "::warning::Previous release has no Droplit DMG. Skipping continuity comparison."
+            exit 0
+          fi
+
+          MOUNT_POINT=$(mktemp -d /tmp/droplit-previous-release.XXXXXX)
+          cleanup() {
+            hdiutil detach "$MOUNT_POINT" -quiet >/dev/null 2>&1 || true
+            rm -rf "$MOUNT_POINT"
+          }
+          trap cleanup EXIT
+
+          hdiutil attach "$PREVIOUS_DMG" -mountpoint "$MOUNT_POINT" -nobrowse -quiet
+          if [ ! -d "$MOUNT_POINT/Droplit.app" ]; then
+            echo "::warning::Previous release DMG has no Droplit.app at root. Skipping continuity comparison."
+            exit 0
+          fi
+
+          ditto "$MOUNT_POINT/Droplit.app" build/previous-release/Droplit.app
+          codesign -dr - build/previous-release/Droplit.app 2>&1 | sed -n 's/^designated => //p' > build/previous-designated-requirement.txt
+          /usr/libexec/PlistBuddy -c "Print :SUPublicEDKey" build/previous-release/Droplit.app/Contents/Info.plist > build/previous-sparkle-public-key.txt 2>/dev/null || true
+
+          SIGNING_CHANGED=false
+          KEY_CHANGED=false
+
+          if ! diff -u build/previous-designated-requirement.txt build/candidate-designated-requirement.txt; then
+            SIGNING_CHANGED=true
+          fi
+
+          if [ -s build/previous-sparkle-public-key.txt ] && ! diff -u build/previous-sparkle-public-key.txt build/candidate-sparkle-public-key.txt; then
+            KEY_CHANGED=true
+          fi
+
+          if [ "$SIGNING_CHANGED" = "true" ] && [ "$KEY_CHANGED" = "true" ]; then
+            echo "::error::Both code signing identity and Sparkle EdDSA public key changed. Split this into separate tested migration releases."
+            exit 1
+          fi
+
+          if [ "$SIGNING_CHANGED" = "true" ] && [ "${ALLOW_SIGNING_IDENTITY_CHANGE}" != "true" ]; then
+            echo "::error::Candidate designated requirement differs from previous release. Set ALLOW_SIGNING_IDENTITY_CHANGE=true only after local migration E2E proof."
+            exit 1
+          fi
+
+          if [ "$KEY_CHANGED" = "true" ] && [ "${ALLOW_SPARKLE_KEY_CHANGE}" != "true" ]; then
+            echo "::error::Sparkle public key changed. Set ALLOW_SPARKLE_KEY_CHANGE=true only for a dedicated key rotation release."
+            exit 1
+          fi
+
+          echo "Signing continuity gate passed."
+
+      - name: Create DMG
+        run: |
+          set -euo pipefail
+          DMG_NAME="Droplit-v${{ steps.version.outputs.version }}.dmg"
+          DMG_ROOT="build/dmg-root"
+          rm -rf "$DMG_ROOT" "build/$DMG_NAME"
+          mkdir -p "$DMG_ROOT"
+
+          ditto "$APP_PATH" "$DMG_ROOT/Droplit.app"
+          ln -s /Applications "$DMG_ROOT/Applications"
+
+          hdiutil create \
+            -volname "Droplit" \
+            -srcfolder "$DMG_ROOT" \
+            -ov \
+            -format UDZO \
+            "build/$DMG_NAME"
+
+          echo "dmg_path=build/$DMG_NAME" >> "$GITHUB_ENV"
+          echo "dmg_name=$DMG_NAME" >> "$GITHUB_ENV"
+
+      - name: Notarize DMG
+        if: env.HAS_DEVELOPER_ID_CERT == 'true' && env.HAS_NOTARIZATION_CREDENTIALS == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          xcrun notarytool submit "$dmg_path" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          xcrun stapler staple "$dmg_path"
+
+      - name: Compute SHA256
+        id: sha256
+        run: |
+          set -euo pipefail
+          SHA=$(shasum -a 256 "$dmg_path" | awk '{print $1}')
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "$SHA"
+
+      - name: Sign DMG with Sparkle EdDSA key
+        id: sparkle_sign
+        if: env.HAS_SPARKLE_KEY == 'true'
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          PRIVATE_KEY_FILE="$RUNNER_TEMP/sparkle_private_key.pem"
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$PRIVATE_KEY_FILE"
+
+          SIGN_UPDATE=$(find build/DerivedData/SourcePackages/artifacts -name sign_update -type f 2>/dev/null | head -1 || true)
+
+          if [ -z "$SIGN_UPDATE" ]; then
+            SPARKLE_SRC="build/DerivedData/SourcePackages/checkouts/Sparkle/sign_update"
+            if [ -d "$SPARKLE_SRC" ]; then
+              swift build --package-path "$SPARKLE_SRC" -c release
+              BIN_PATH=$(swift build --package-path "$SPARKLE_SRC" -c release --show-bin-path)
+              SIGN_UPDATE="$BIN_PATH/sign_update"
+            fi
+          fi
+
+          if [ -z "$SIGN_UPDATE" ] || [ ! -x "$SIGN_UPDATE" ]; then
+            echo "::error::Could not locate Sparkle sign_update"
+            exit 1
+          fi
+
+          SIGN_OUTPUT=$("$SIGN_UPDATE" "$dmg_path" --ed-key-file "$PRIVATE_KEY_FILE" 2>&1)
+          SIGNATURE=$(echo "$SIGN_OUTPUT" | grep 'sparkle:edSignature=' | cut -d'"' -f2)
+          rm -f "$PRIVATE_KEY_FILE"
+
+          if [ -z "$SIGNATURE" ]; then
+            echo "$SIGN_OUTPUT"
+            echo "::error::Sparkle EdDSA signature is empty"
+            exit 1
+          fi
+
+          echo "signature=$SIGNATURE" >> "$GITHUB_OUTPUT"
+
+      - name: Require Sparkle signature
+        run: |
+          set -euo pipefail
+          if [ "${HAS_SPARKLE_KEY}" != "true" ]; then
+            echo "::error::SPARKLE_PRIVATE_KEY secret is required to publish Sparkle updates"
+            exit 1
+          fi
+
+      - name: Convert changelog to HTML for appcast
+        id: release_notes
+        run: |
+          set -euo pipefail
+          NOTES_HTML=""
+          CURRENT_SECTION=""
+
+          while IFS= read -r line; do
+            if echo "$line" | grep -qE '^### Features'; then
+              [ -n "$CURRENT_SECTION" ] && NOTES_HTML="${NOTES_HTML}</ul>"
+              NOTES_HTML="${NOTES_HTML}<h3>Features</h3><ul>"
+              CURRENT_SECTION="features"
+            elif echo "$line" | grep -qE '^### Bug Fixes'; then
+              [ -n "$CURRENT_SECTION" ] && NOTES_HTML="${NOTES_HTML}</ul>"
+              NOTES_HTML="${NOTES_HTML}<h3>Bug Fixes</h3><ul>"
+              CURRENT_SECTION="fixes"
+            elif echo "$line" | grep -qE '^### Maintenance|^### Changes'; then
+              [ -n "$CURRENT_SECTION" ] && NOTES_HTML="${NOTES_HTML}</ul>"
+              NOTES_HTML="${NOTES_HTML}<h3>Maintenance</h3><ul>"
+              CURRENT_SECTION="maintenance"
+            elif echo "$line" | grep -qE '^### '; then
+              [ -n "$CURRENT_SECTION" ] && NOTES_HTML="${NOTES_HTML}</ul>"
+              CURRENT_SECTION=""
+            elif [ -n "$CURRENT_SECTION" ] && echo "$line" | grep -qE '^- '; then
+              ITEM=$(echo "$line" | sed 's/^- *//' | sed 's/ ([a-f0-9]\{7\})$//')
+              [ -n "$ITEM" ] && NOTES_HTML="${NOTES_HTML}<li>${ITEM}</li>"
+            fi
+          done < "${{ steps.changelog.outputs.changelog_path }}"
+
+          [ -n "$CURRENT_SECTION" ] && NOTES_HTML="${NOTES_HTML}</ul>"
+          [ -z "$NOTES_HTML" ] && NOTES_HTML="<h3>Maintenance</h3><ul><li>Bug fixes and improvements</li></ul>"
+
+          {
+            echo "release_notes_html<<EOF"
+            echo "$NOTES_HTML"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Update appcast.xml
+        run: |
+          set -euo pipefail
+          BUILD=$(grep -m1 'CURRENT_PROJECT_VERSION' Droplit.xcodeproj/project.pbxproj | sed 's/.*= //' | sed 's/;.*//' | tr -d ' ')
+          ./scripts/update-appcast.sh \
+            "${{ steps.version.outputs.version }}" \
+            "$BUILD" \
+            "$dmg_path" \
+            "appcast.xml" \
+            "${{ steps.sparkle_sign.outputs.signature }}" \
+            "${{ steps.release_notes.outputs.release_notes_html }}"
+
+      - name: Append release artifact note
+        run: |
+          set -euo pipefail
+          if [ "${HAS_DEVELOPER_ID_CERT}" = "true" ] && [ "${HAS_NOTARIZATION_CREDENTIALS}" = "true" ]; then
+            NOTE="- Release artifact: Developer ID signed and notarized."
+          elif [ "${HAS_DEVELOPER_ID_CERT}" = "true" ]; then
+            NOTE="- Release artifact: Developer ID signed, not notarized."
+          elif [ "${HAS_SELF_SIGNED_CERT}" = "true" ]; then
+            NOTE="- Release artifact: self-signed certificate, not notarized. Install to /Applications before first launch."
+          else
+            NOTE="- Release artifact: ad-hoc signed by explicit override. Not recommended for public distribution."
+          fi
+
+          {
+            printf '\n\n### Distribution Notes\n\n'
+            printf '%s\n' "$NOTE"
+            printf -- '- SHA-256: %s\n' "${{ steps.sha256.outputs.sha256 }}"
+          } >> build/changelog.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body_path: ${{ steps.changelog.outputs.changelog_path }}
+          draft: false
+          prerelease: false
+          files: ${{ env.dmg_path }}
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit appcast update
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add appcast.xml
+          if git diff --cached --quiet; then
+            echo "No appcast changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: update appcast for v${{ steps.version.outputs.version }}"
+          git push origin master

@@ -44,6 +44,7 @@
 - **Smart Output** — save optimized files to a chosen folder, or use Droplit's temporary app storage with configurable auto-expiration (1–90 days).
 - **Homebrew Bootstrap** — detects missing optimizers on launch and offers one-click `brew install` when Homebrew is available.
 - **Onboarding** — guided first-run setup for installing dependencies and optional permissions.
+- **Signed Updates** — in-app update checks through Sparkle with EdDSA-signed release artifacts.
 - **System Settings-style UI** — native settings shell with `NavigationSplitView` on modern macOS, a macOS 11-12 fallback sidebar, grouped controls, and a dedicated About page.
 
 ## Install
@@ -74,14 +75,18 @@ For local setup, source builds, and project architecture, see [docs/STRUCTURE.md
 ./scripts/build_and_run.sh
 ```
 
+Release automation, signing requirements, and appcast maintenance are documented in [docs/RELEASES.md](docs/RELEASES.md).
+
 ## Documentation
 
 - [Project structure and runtime architecture](docs/STRUCTURE.md)
 - [Design tokens and visual states](docs/DESIGN_TOKENS.md)
+- [Release workflow and update signing](docs/RELEASES.md)
+- [Local Sparkle update testing](docs/UPDATE_TESTING.md)
 
 ## Security
 
-Droplit runs optimizer commands locally via CLI binaries you already own or install through Homebrew. No data is uploaded to any server, and no telemetry is collected. Optimized files are written either to a folder you choose or to a local temporary directory under `~/Library/Application Support/Droplit/Temporary Outputs/` with automatic cleanup.
+Droplit runs optimizer commands locally via CLI binaries you already own or install through Homebrew. No data is uploaded to any server, and no telemetry is collected. Optimized files are written either to a folder you choose or to a local temporary directory under `~/Library/Application Support/Droplit/Temporary Outputs/` with automatic cleanup. Update checks use Sparkle against Droplit's signed appcast.
 
 ## License
 
