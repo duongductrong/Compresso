@@ -579,6 +579,25 @@ nonisolated struct QuickAccessItem: Identifiable {
             return failureMessage ?? "Failed"
         }
     }
+
+    var preferredExternalDragURL: URL? {
+        if let outputURL,
+           FileManager.default.fileExists(atPath: outputURL.path) {
+            return outputURL
+        }
+        if FileManager.default.fileExists(atPath: sourceURL.path) {
+            return sourceURL
+        }
+        return nil
+    }
+
+    var usesOptimizedExternalDragURL: Bool {
+        guard let outputURL,
+              let preferredExternalDragURL else {
+            return false
+        }
+        return outputURL == preferredExternalDragURL
+    }
 }
 
 extension ByteCountFormatter {

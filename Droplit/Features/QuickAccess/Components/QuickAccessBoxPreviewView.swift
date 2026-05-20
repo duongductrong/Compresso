@@ -12,6 +12,11 @@ struct QuickAccessBoxPreviewView: View {
                 QuickAccessBoxPreviewItemCard(layer: layer)
                     .rotationEffect(.degrees(layer.rotation))
                     .offset(layer.offset)
+                    .onDrag {
+                        layer.dragItemProvider
+                    }
+                    .help(layer.helpText)
+                    .quickAccessCursor(.pointingHand)
             }
         }
         .frame(width: 126, height: 112)
@@ -96,6 +101,17 @@ private struct QuickAccessBoxPreviewLayer: Identifiable {
     let cornerRadius: CGFloat
 
     var id: UUID { item.id }
+
+    var dragItemProvider: NSItemProvider {
+        guard let preferredExternalDragURL = item.preferredExternalDragURL else {
+            return NSItemProvider()
+        }
+        return NSItemProvider(object: preferredExternalDragURL as NSURL)
+    }
+
+    var helpText: String {
+        item.usesOptimizedExternalDragURL ? "Drag optimized output" : "Drag original file"
+    }
 }
 
 private struct QuickAccessBoxPreviewItemCard: View {

@@ -172,8 +172,8 @@ docs/
 23. Conversion actions always read `QuickAccessItem.sourceURL`, not the optimized output URL, so repeated switches do not chain from a compressed/downscaled derivative.
 24. Swipe a Quick Access result card left or right to dismiss that card.
 25. Drag a completed Quick Access card away from its dismiss direction to drop the optimized or converted output into external apps.
-26. External drag uses an AppKit `NSDraggingSession` with output file URLs as `NSURL` pasteboard writers for broad Finder, native app, and browser compatibility.
-    Stack cards drag one completed output, Box preview drags all completed outputs together, and Box popover cells drag their own completed output.
+26. External drag uses file URL pasteboard payloads for broad Finder, native app, and browser compatibility.
+    Stack cards drag one completed output; Box preview stack layers and Box popover cells drag their source file before optimization or their output file after optimization.
 27. Double-click a card to open the optimized or converted output, falling back to the source file when output is unavailable.
 28. Completed Quick Access cards stay visible for the configured result-card duration, defaulting to 15 seconds; selecting Never keeps them visible until removed.
 29. When enabled in Quick Access settings, each finished optimized output file is copied to the system clipboard.

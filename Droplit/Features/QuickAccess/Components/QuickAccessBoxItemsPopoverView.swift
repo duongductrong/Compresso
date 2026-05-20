@@ -88,33 +88,37 @@ struct QuickAccessBoxItemsPopoverView: View {
 private struct QuickAccessBoxItemGridCell: View {
     let item: QuickAccessItem
     let actions: QuickAccessPresentationActions
-    @State private var didBeginOutputDrag = false
-    @State private var isDraggingOutput = false
 
     var body: some View {
-        Button {
-            actions.openItem(item.id)
-        } label: {
-            VStack(alignment: .leading, spacing: 5) {
-                thumbnail
+        VStack(alignment: .leading, spacing: 5) {
+            thumbnail
 
-                Text(item.displayTitle)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+            Text(item.displayTitle)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+                .truncationMode(.middle)
 
-                metadataLine
+            metadataLine
 
-                sizeLine
-            }
-            .frame(width: 92, height: 110, alignment: .topLeading)
-            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            sizeLine
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(outputDragGesture)
-        .opacity(isDraggingOutput ? 0.62 : 1)
+        .frame(width: 92, height: 110, alignment: .topLeading)
+        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .onTapGesture(count: 2) {
+            actions.openItem(item.id)
+        }
+        .onDrag {
+            dragItemProvider
+        }
         .help(helpText)
+        .quickAccessCursor(.pointingHand)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint(helpText)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction {
+            actions.openItem(item.id)
+        }
     }
 
     private var thumbnail: some View {
@@ -158,49 +162,18 @@ private struct QuickAccessBoxItemGridCell: View {
         item.optimizedBytes == nil ? item.originalSizeText : item.sizeComparisonText
     }
 
-    private var outputDragGesture: some Gesture {
-        DragGesture(minimumDistance: 7)
-            .onChanged { value in
-                guard let outputURL,
-                      !didBeginOutputDrag,
-                      hypot(value.translation.width, value.translation.height) > 8 else {
-                    return
-                }
-
-                didBeginOutputDrag = true
-                isDraggingOutput = true
-                let didBegin = QuickAccessExternalDragSession.begin(
-                    fileURL: outputURL,
-                    thumbnail: item.thumbnail
-                ) { success in
-                    didBeginOutputDrag = false
-                    isDraggingOutput = false
-                    if success {
-                        actions.removeItem(item.id)
-                    }
-                }
-
-                if !didBegin {
-                    didBeginOutputDrag = false
-                    isDraggingOutput = false
-                }
-            }
-            .onEnded { _ in
-                didBeginOutputDrag = false
-            }
-    }
-
-    private var outputURL: URL? {
-        guard item.state == .completed,
-              let outputURL = item.outputURL,
-              FileManager.default.fileExists(atPath: outputURL.path) else {
-            return nil
+    private var dragItemProvider: NSItemProvider {
+        guard let preferredExternalDragURL = item.preferredExternalDragURL else {
+            return NSItemProvider()
         }
-        return outputURL
+        return NSItemProvider(object: preferredExternalDragURL as NSURL)
     }
 
     private var helpText: String {
-        outputURL == nil ? item.sourceURL.lastPathComponent : "Drag optimized output"
+        if item.usesOptimizedExternalDragURL {
+            return "Double-click to open preview, or drag optimized output"
+        }
+        return "Double-click to open original, or drag original file"
     }
 
     private var statusText: String {

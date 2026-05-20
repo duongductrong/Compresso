@@ -8,8 +8,6 @@ struct QuickAccessBoxView: View {
     @State private var isTargeted = false
     @State private var isItemsPopoverPresented = false
     @State private var isBatchActionsPopoverPresented = false
-    @State private var didBeginBatchOutputDrag = false
-    @State private var isDraggingBatchOutputs = false
 
     private typealias Layout = QuickAccessBoxLayout
 
@@ -77,8 +75,6 @@ struct QuickAccessBoxView: View {
         QuickAccessBoxPreviewView(items: context.items, isTargeted: isTargeted, reduceMotion: reduceMotion)
             .offset(y: -5)
             .contentShape(Rectangle())
-            .gesture(batchOutputDragGesture)
-            .opacity(isDraggingBatchOutputs ? 0.62 : 1)
     }
 
     private var boxBackground: some View {
@@ -238,50 +234,6 @@ struct QuickAccessBoxView: View {
 
     private var finishedItemCount: Int {
         completedItemCount + failedItemCount
-    }
-
-    private var batchOutputDragGesture: some Gesture {
-        DragGesture(minimumDistance: 7)
-            .onChanged { value in
-                guard canDragBatchOutputs,
-                      !didBeginBatchOutputDrag,
-                      hypot(value.translation.width, value.translation.height) > 8 else {
-                    return
-                }
-                beginBatchOutputDrag()
-            }
-            .onEnded { _ in
-                didBeginBatchOutputDrag = false
-            }
-    }
-
-    private func beginBatchOutputDrag() {
-        let outputItems = completedOutputItems
-        guard let thumbnail = outputItems.first?.thumbnail else { return }
-
-        didBeginBatchOutputDrag = true
-        isDraggingBatchOutputs = true
-        let didBegin = QuickAccessExternalDragSession.begin(
-            fileURLs: outputItems.compactMap(outputURL),
-            thumbnail: thumbnail
-        ) { success in
-            didBeginBatchOutputDrag = false
-            isDraggingBatchOutputs = false
-            if success {
-                outputItems.forEach { item in
-                    actions.removeItem(item.id)
-                }
-            }
-        }
-
-        if !didBegin {
-            didBeginBatchOutputDrag = false
-            isDraggingBatchOutputs = false
-        }
-    }
-
-    private var canDragBatchOutputs: Bool {
-        !completedOutputItems.isEmpty
     }
 
     private var completedOutputItems: [QuickAccessItem] {

@@ -40,7 +40,7 @@
   - Images → PNG, JPEG, WebP, or HEIC
   - Video / GIF → GIF, MOV, or MP4
 - **Concurrency Queue** — processes up to your configured number of jobs in parallel; extra drops queue automatically. Cancel a running job at any time by swiping its card away.
-- **Drag Out** — drag a completed card into any external app, Finder folder, or browser.
+- **Drag Out** — drag supported Quick Access files into external apps, Finder folders, or browsers before or after optimization.
 - **Smart Output** — save optimized files to a chosen folder, or use Droplit's temporary app storage with configurable auto-expiration (1–90 days).
 - **Homebrew Bootstrap** — detects missing optimizers on launch and offers one-click `brew install` when Homebrew is available.
 - **Onboarding** — guided first-run setup for installing dependencies and optional permissions.

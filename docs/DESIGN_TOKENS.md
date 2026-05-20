@@ -149,7 +149,7 @@ material treatment:
 - Box top-left close clears the full batch, and the bottom count pill opens `QuickAccessBoxItemsPopoverView`, a centered three-column media-only grid of clipped thumbnails with truncated names plus compact file-type, status, and per-item `original -> optimized` size labels.
 - Box center preview uses smaller borderless clipped thumbnails, preserving the real-item stack without overlapping the top chrome or bottom count pill.
 - Box count pill appears only after actual items exist, prefers the active item count while running, and switches to total `original -> optimized` size after completed outputs exist.
-- Box preview supports dragging all completed optimized outputs together; each completed popover item supports dragging its own optimized output.
+- Box preview stack layers and popover items support dragging their source file before optimization and their optimized output after completion.
 - Quick Access after-processing settings use native menu picker options for completed-card display duration and a native switch for auto-copy.
 - Quick Access dimensions live in `QuickAccessLayout`.
 - Quick Access shadow allowance lives in `QuickAccessLayout.shadowMargin`.
