@@ -572,8 +572,10 @@ private struct ProgressBar: View {
     }
 
     private func filledWidth(in totalWidth: CGFloat) -> CGFloat {
-        let value = progress.map { min(max($0, 0.05), 1) } ?? phase
-        return totalWidth * value
+        if let progress {
+            return totalWidth * CGFloat(min(max(progress, 0.05), 1))
+        }
+        return totalWidth * phase
     }
 }
 

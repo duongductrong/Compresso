@@ -75,7 +75,12 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             ONLY_ACTIVE_ARCH=NO \
             > build/archive.log 2>&1; then
-            tail -100 build/archive.log
+            echo "::group::Archive errors"
+            grep -n -B4 -A12 -E "error:|fatal error|ARCHIVE FAILED|BUILD FAILED|The following build commands failed" build/archive.log || true
+            echo "::endgroup::"
+            echo "::group::Archive log tail"
+            tail -200 build/archive.log
+            echo "::endgroup::"
             exit 1
           fi
 

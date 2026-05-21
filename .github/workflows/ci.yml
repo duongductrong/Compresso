@@ -47,7 +47,12 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             ONLY_ACTIVE_ARCH=NO \
             build > build/ci-build.log 2>&1; then
-            tail -100 build/ci-build.log
+            echo "::group::Build errors"
+            grep -n -B4 -A12 -E "error:|fatal error|BUILD FAILED|The following build commands failed" build/ci-build.log || true
+            echo "::endgroup::"
+            echo "::group::Build log tail"
+            tail -200 build/ci-build.log
+            echo "::endgroup::"
             exit 1
           fi
 
