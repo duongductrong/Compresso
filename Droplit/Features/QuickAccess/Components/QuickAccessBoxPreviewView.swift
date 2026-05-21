@@ -84,16 +84,33 @@ struct QuickAccessBoxPreviewView: View {
     ) -> QuickAccessBoxPreviewLayer {
         QuickAccessBoxPreviewLayer(
             item: item,
+            dragFileURLs: dragFileURLs(startingWith: item),
             size: size,
             rotation: rotation,
             offset: offset,
             cornerRadius: 8
         )
     }
+
+    private func dragFileURLs(startingWith selectedItem: QuickAccessItem) -> [URL] {
+        let entries = items.compactMap { item -> (id: UUID, fileURL: URL)? in
+            guard let fileURL = item.preferredExternalDragURL else { return nil }
+            return (item.id, fileURL)
+        }
+        guard let selectedIndex = entries.firstIndex(where: { $0.id == selectedItem.id }) else {
+            return entries.map(\.fileURL)
+        }
+
+        return [entries[selectedIndex].fileURL] + entries
+            .enumerated()
+            .filter { $0.offset != selectedIndex }
+            .map(\.element.fileURL)
+    }
 }
 
 private struct QuickAccessBoxPreviewLayer: Identifiable {
     let item: QuickAccessItem
+    let dragFileURLs: [URL]
     let size: CGSize
     let rotation: Double
     let offset: CGSize
@@ -102,7 +119,10 @@ private struct QuickAccessBoxPreviewLayer: Identifiable {
     var id: UUID { item.id }
 
     var helpText: String {
-        item.usesOptimizedExternalDragURL ? "Drag optimized output" : "Drag original file"
+        if dragFileURLs.count > 1 {
+            return "Drag \(dragFileURLs.count) files"
+        }
+        return item.usesOptimizedExternalDragURL ? "Drag optimized output" : "Drag original file"
     }
 }
 
@@ -132,11 +152,11 @@ private struct QuickAccessBoxPreviewLayerView: View {
     }
 
     private func beginExternalDragIfPossible() {
-        guard let dragURL = layer.item.preferredExternalDragURL else { return }
+        guard !layer.dragFileURLs.isEmpty else { return }
 
         isDraggingExternally = true
         let didBegin = QuickAccessExternalDragSession.begin(
-            fileURL: dragURL,
+            fileURLs: layer.dragFileURLs,
             thumbnail: layer.item.thumbnail
         ) { success in
             isDraggingExternally = false

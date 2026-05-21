@@ -188,7 +188,9 @@ docs/
 25. Drag any Quick Access stack card with an available file away from its dismiss direction to drop it into external apps.
     Completed stack cards drag their optimized or converted output when it exists; staged, queued, processing, and failed stack cards drag the original source file.
 26. External drag uses file URL pasteboard payloads for broad Finder, native app, and browser compatibility.
-    Stack overflow drags all available item files together; Box preview stack layers and Box popover cells drag their source file before optimization or their output file after optimization.
+    Stack overflow drags all available item files together.
+    Box preview stack layers drag all available Box item files together, resolving each file to its source before optimization or output after optimization.
+    Box popover cells drag their source file before optimization or their output file after optimization.
     After a successful Box preview stack drag, the Box clears its stacked items and stays open in the empty drop state until the user closes it.
 27. Double-click a card to open the optimized or converted output, falling back to the source file when output is unavailable.
 28. Completed Quick Access cards stay visible for the configured result-card duration, defaulting to 15 seconds; selecting Never keeps them visible until removed.
