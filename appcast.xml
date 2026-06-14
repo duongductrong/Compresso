@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
-    <title>Droplit Updates</title>
-    <link>https://github.com/duongductrong/Droplit/releases</link>
-    <description>Droplit application updates</description>
+    <title>Compresso Updates</title>
+    <link>https://github.com/duongductrong/Compresso/releases</link>
+    <description>Compresso application updates</description>
     <language>en</language>
   </channel>
 </rss>

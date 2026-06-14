@@ -4,8 +4,8 @@
 set -e
 
 # --- Configuration ---
-SCHEME="Droplit"
-PROJECT="Droplit.xcodeproj"
+SCHEME="Compresso"
+PROJECT="Compresso.xcodeproj"
 
 # Colors
 BLUE='\033[0;34m'

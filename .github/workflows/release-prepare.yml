@@ -108,7 +108,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
-          git add Droplit.xcodeproj/project.pbxproj CHANGELOG.md
+          git add Compresso.xcodeproj/project.pbxproj CHANGELOG.md
           git commit -m "chore: release ${VERSION}"
           git push --force origin "$BRANCH"
 

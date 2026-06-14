@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Local E2E test for Droplit Sparkle updates.
+# Local E2E test for Compresso Sparkle updates.
 #
 # Usage:
-#   export SPARKLE_PRIVATE_KEY_FILE=$HOME/.config/droplit/sparkle_private_key.pem
+#   export SPARKLE_PRIVATE_KEY_FILE=$HOME/.config/compresso/sparkle_private_key.pem
 #   ./scripts/test-update-local.sh test-same
 #   ./scripts/test-update-local.sh test-mismatch
 #   ./scripts/test-update-local.sh clean
@@ -10,10 +10,10 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-TEST_DIR="/tmp/test-droplit-sparkle-update"
-CERT_NAME="${DROPLIT_SIGNING_IDENTITY:-Droplit Self-Signed}"
-INSTALL_PATH="/Applications/Droplit.app"
-SERVER_PORT="${DROPLIT_UPDATE_TEST_PORT:-8089}"
+TEST_DIR="/tmp/test-compresso-sparkle-update"
+CERT_NAME="${COMPRESSO_SIGNING_IDENTITY:-Compresso Self-Signed}"
+INSTALL_PATH="/Applications/Compresso.app"
+SERVER_PORT="${COMPRESSO_UPDATE_TEST_PORT:-8089}"
 
 V1_VERSION="99.0.0"
 V1_BUILD="990"
@@ -59,7 +59,7 @@ check_prereqs() {
 }
 
 build_archive() {
-  local archive_path="$TEST_DIR/archive/Droplit.xcarchive"
+  local archive_path="$TEST_DIR/archive/Compresso.xcarchive"
 
   if [ -d "$archive_path" ]; then
     echo "Reusing archive: $archive_path"
@@ -69,8 +69,8 @@ build_archive() {
   mkdir -p "$TEST_DIR/archive"
   echo "Building unsigned archive..."
   if ! xcodebuild archive \
-    -project "$PROJECT_DIR/Droplit.xcodeproj" \
-    -scheme Droplit \
+    -project "$PROJECT_DIR/Compresso.xcodeproj" \
+    -scheme Compresso \
     -configuration Release \
     -archivePath "$archive_path" \
     -derivedDataPath "$TEST_DIR/DerivedData" \
@@ -132,12 +132,12 @@ prepare_version() {
   local version="$2"
   local build="$3"
   local identity="$4"
-  local archive_path="$TEST_DIR/archive/Droplit.xcarchive"
-  local app_path="$TEST_DIR/$label/Droplit.app"
+  local archive_path="$TEST_DIR/archive/Compresso.xcarchive"
+  local app_path="$TEST_DIR/$label/Compresso.app"
 
   rm -rf "$TEST_DIR/$label"
   mkdir -p "$TEST_DIR/$label"
-  ditto "$archive_path/Products/Applications/Droplit.app" "$app_path"
+  ditto "$archive_path/Products/Applications/Compresso.app" "$app_path"
 
   echo "Preparing $label: v$version ($build), identity=$identity"
   patch_info_plist "$app_path" "$version" "$build"
@@ -146,24 +146,24 @@ prepare_version() {
 
 install_v1() {
   echo "Installing v1 to $INSTALL_PATH"
-  killall Droplit >/dev/null 2>&1 || true
+  killall Compresso >/dev/null 2>&1 || true
   rm -rf "$INSTALL_PATH"
-  ditto "$TEST_DIR/v1/Droplit.app" "$INSTALL_PATH"
+  ditto "$TEST_DIR/v1/Compresso.app" "$INSTALL_PATH"
 }
 
 create_dmg() {
   local root="$TEST_DIR/server/dmg-root"
-  local dmg_path="$TEST_DIR/server/Droplit-test.dmg"
+  local dmg_path="$TEST_DIR/server/Compresso-test.dmg"
 
   rm -rf "$root" "$dmg_path"
   mkdir -p "$root"
-  ditto "$TEST_DIR/v2/Droplit.app" "$root/Droplit.app"
+  ditto "$TEST_DIR/v2/Compresso.app" "$root/Compresso.app"
   ln -s /Applications "$root/Applications"
-  hdiutil create -volname "Droplit Test" -srcfolder "$root" -ov -format UDZO "$dmg_path" >/dev/null
+  hdiutil create -volname "Compresso Test" -srcfolder "$root" -ov -format UDZO "$dmg_path" >/dev/null
 }
 
 sign_dmg_eddsa() {
-  local dmg_path="$TEST_DIR/server/Droplit-test.dmg"
+  local dmg_path="$TEST_DIR/server/Compresso-test.dmg"
   SIGN_UPDATE=$(find_sign_update)
 
   if [ -z "$SIGN_UPDATE" ] || [ ! -x "$SIGN_UPDATE" ]; then
@@ -183,7 +183,7 @@ sign_dmg_eddsa() {
 }
 
 generate_appcast() {
-  local dmg_path="$TEST_DIR/server/Droplit-test.dmg"
+  local dmg_path="$TEST_DIR/server/Compresso-test.dmg"
   local appcast_path="$TEST_DIR/server/appcast.xml"
   local file_size
   local pub_date
@@ -195,7 +195,7 @@ generate_appcast() {
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
-    <title>Droplit Test Updates</title>
+    <title>Compresso Test Updates</title>
     <link>http://localhost:${SERVER_PORT}</link>
     <description>Local test appcast</description>
     <language>en</language>
@@ -206,7 +206,7 @@ generate_appcast() {
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <pubDate>${pub_date}</pubDate>
       <enclosure
-        url="http://localhost:${SERVER_PORT}/Droplit-test.dmg"
+        url="http://localhost:${SERVER_PORT}/Compresso-test.dmg"
         sparkle:edSignature="${ED_SIGNATURE}"
         length="${file_size}"
         type="application/octet-stream"/>
@@ -239,7 +239,7 @@ run_test() {
   local v2_identity="$CERT_NAME"
 
   if [ "$mode" = "mismatch" ]; then
-    v2_identity="${DROPLIT_MISMATCH_SIGNING_IDENTITY:--}"
+    v2_identity="${COMPRESSO_MISMATCH_SIGNING_IDENTITY:--}"
   fi
 
   check_prereqs
@@ -260,7 +260,7 @@ run_test() {
   echo "Available: v$V2_VERSION ($V2_BUILD)"
   echo "Appcast: http://localhost:$SERVER_PORT/appcast.xml"
   echo
-  echo "Open Droplit from /Applications, then About -> Check for Updates."
+  echo "Open Compresso from /Applications, then About -> Check for Updates."
   echo "Press Ctrl+C to stop the server."
   echo
 
@@ -277,7 +277,7 @@ case "${1:-help}" in
     ;;
   clean)
     stop_server
-    killall Droplit >/dev/null 2>&1 || true
+    killall Compresso >/dev/null 2>&1 || true
     rm -rf "$TEST_DIR"
     echo "Cleaned $TEST_DIR"
     ;;
@@ -286,8 +286,8 @@ case "${1:-help}" in
     echo
     echo "Environment:"
     echo "  SPARKLE_PRIVATE_KEY_FILE       required Sparkle EdDSA private key file"
-    echo "  DROPLIT_SIGNING_IDENTITY       default: Droplit Self-Signed"
-    echo "  DROPLIT_MISMATCH_SIGNING_IDENTITY default: -"
-    echo "  DROPLIT_UPDATE_TEST_PORT       default: 8089"
+    echo "  COMPRESSO_SIGNING_IDENTITY       default: Compresso Self-Signed"
+    echo "  COMPRESSO_MISMATCH_SIGNING_IDENTITY default: -"
+    echo "  COMPRESSO_UPDATE_TEST_PORT       default: 8089"
     ;;
 esac

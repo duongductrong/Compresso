@@ -65,10 +65,10 @@ jobs:
           mkdir -p build
 
           if ! xcodebuild archive \
-            -project Droplit.xcodeproj \
-            -scheme Droplit \
+            -project Compresso.xcodeproj \
+            -scheme Compresso \
             -configuration Release \
-            -archivePath build/Droplit.xcarchive \
+            -archivePath build/Compresso.xcarchive \
             -derivedDataPath build/DerivedData \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
@@ -85,7 +85,7 @@ jobs:
           fi
 
           tail -20 build/archive.log
-          test -d build/Droplit.xcarchive
+          test -d build/Compresso.xcarchive
 
       - name: Guard release signing strategy
         run: |
@@ -97,7 +97,7 @@ jobs:
           fi
 
           if [ "${HAS_SELF_SIGNED_CERT}" = "true" ]; then
-            echo "Signing strategy: stable self-signed certificate (${SELF_SIGNED_CODE_SIGN_IDENTITY:-Droplit Self-Signed})"
+            echo "Signing strategy: stable self-signed certificate (${SELF_SIGNED_CODE_SIGN_IDENTITY:-Compresso Self-Signed})"
             exit 0
           fi
 
@@ -142,7 +142,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build/export
-          ARCHIVE_PATH="build/Droplit.xcarchive"
+          ARCHIVE_PATH="build/Compresso.xcarchive"
 
           if [ "${HAS_DEVELOPER_ID_CERT}" = "true" ]; then
             cat > build/ExportOptions.plist <<'PLIST'
@@ -163,12 +163,12 @@ jobs:
               -exportPath build/export \
               -exportOptionsPlist build/ExportOptions.plist
           else
-            ditto "$ARCHIVE_PATH/Products/Applications/Droplit.app" build/Droplit.app
-            APP_PATH="build/Droplit.app"
+            ditto "$ARCHIVE_PATH/Products/Applications/Compresso.app" build/Compresso.app
+            APP_PATH="build/Compresso.app"
             SPARKLE_FRAMEWORK="$APP_PATH/Contents/Frameworks/Sparkle.framework"
 
             if [ "${HAS_SELF_SIGNED_CERT}" = "true" ]; then
-              SIGN_IDENTITY="${SELF_SIGNED_CODE_SIGN_IDENTITY:-Droplit Self-Signed}"
+              SIGN_IDENTITY="${SELF_SIGNED_CODE_SIGN_IDENTITY:-Compresso Self-Signed}"
             else
               SIGN_IDENTITY="-"
             fi
@@ -195,9 +195,9 @@ jobs:
       - name: Verify exported app
         run: |
           set -euo pipefail
-          APP_PATH="build/Droplit.app"
-          if [ -d "build/export/Droplit.app" ]; then
-            APP_PATH="build/export/Droplit.app"
+          APP_PATH="build/Compresso.app"
+          if [ -d "build/export/Compresso.app" ]; then
+            APP_PATH="build/export/Compresso.app"
           fi
 
           echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
@@ -231,18 +231,18 @@ jobs:
             exit 0
           fi
 
-          if ! gh release download "$PREVIOUS_TAG" -p 'Droplit-v*.dmg' -D build/previous-release; then
-            echo "::warning::Could not download previous Droplit DMG. Skipping continuity comparison."
+          if ! gh release download "$PREVIOUS_TAG" -p 'Compresso-v*.dmg' -D build/previous-release; then
+            echo "::warning::Could not download previous Compresso DMG. Skipping continuity comparison."
             exit 0
           fi
 
-          PREVIOUS_DMG=$(find build/previous-release -name 'Droplit-v*.dmg' -type f | head -1)
+          PREVIOUS_DMG=$(find build/previous-release -name 'Compresso-v*.dmg' -type f | head -1)
           if [ -z "$PREVIOUS_DMG" ]; then
-            echo "::warning::Previous release has no Droplit DMG. Skipping continuity comparison."
+            echo "::warning::Previous release has no Compresso DMG. Skipping continuity comparison."
             exit 0
           fi
 
-          MOUNT_POINT=$(mktemp -d /tmp/droplit-previous-release.XXXXXX)
+          MOUNT_POINT=$(mktemp -d /tmp/compresso-previous-release.XXXXXX)
           cleanup() {
             hdiutil detach "$MOUNT_POINT" -quiet >/dev/null 2>&1 || true
             rm -rf "$MOUNT_POINT"
@@ -250,14 +250,14 @@ jobs:
           trap cleanup EXIT
 
           hdiutil attach "$PREVIOUS_DMG" -mountpoint "$MOUNT_POINT" -nobrowse -quiet
-          if [ ! -d "$MOUNT_POINT/Droplit.app" ]; then
-            echo "::warning::Previous release DMG has no Droplit.app at root. Skipping continuity comparison."
+          if [ ! -d "$MOUNT_POINT/Compresso.app" ]; then
+            echo "::warning::Previous release DMG has no Compresso.app at root. Skipping continuity comparison."
             exit 0
           fi
 
-          ditto "$MOUNT_POINT/Droplit.app" build/previous-release/Droplit.app
-          codesign -dr - build/previous-release/Droplit.app 2>&1 | sed -n 's/^designated => //p' > build/previous-designated-requirement.txt
-          /usr/libexec/PlistBuddy -c "Print :SUPublicEDKey" build/previous-release/Droplit.app/Contents/Info.plist > build/previous-sparkle-public-key.txt 2>/dev/null || true
+          ditto "$MOUNT_POINT/Compresso.app" build/previous-release/Compresso.app
+          codesign -dr - build/previous-release/Compresso.app 2>&1 | sed -n 's/^designated => //p' > build/previous-designated-requirement.txt
+          /usr/libexec/PlistBuddy -c "Print :SUPublicEDKey" build/previous-release/Compresso.app/Contents/Info.plist > build/previous-sparkle-public-key.txt 2>/dev/null || true
 
           SIGNING_CHANGED=false
           KEY_CHANGED=false
@@ -290,16 +290,16 @@ jobs:
       - name: Create DMG
         run: |
           set -euo pipefail
-          DMG_NAME="Droplit-v${{ steps.version.outputs.version }}.dmg"
+          DMG_NAME="Compresso-v${{ steps.version.outputs.version }}.dmg"
           DMG_ROOT="build/dmg-root"
           rm -rf "$DMG_ROOT" "build/$DMG_NAME"
           mkdir -p "$DMG_ROOT"
 
-          ditto "$APP_PATH" "$DMG_ROOT/Droplit.app"
+          ditto "$APP_PATH" "$DMG_ROOT/Compresso.app"
           ln -s /Applications "$DMG_ROOT/Applications"
 
           hdiutil create \
-            -volname "Droplit" \
+            -volname "Compresso" \
             -srcfolder "$DMG_ROOT" \
             -ov \
             -format UDZO \
@@ -418,7 +418,7 @@ jobs:
       - name: Update appcast.xml
         run: |
           set -euo pipefail
-          BUILD=$(grep -m1 'CURRENT_PROJECT_VERSION' Droplit.xcodeproj/project.pbxproj | sed 's/.*= //' | sed 's/;.*//' | tr -d ' ')
+          BUILD=$(grep -m1 'CURRENT_PROJECT_VERSION' Compresso.xcodeproj/project.pbxproj | sed 's/.*= //' | sed 's/;.*//' | tr -d ' ')
           ./scripts/update-appcast.sh \
             "${{ steps.version.outputs.version }}" \
             "$BUILD" \

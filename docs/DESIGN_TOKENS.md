@@ -1,6 +1,6 @@
 # Design Tokens
 
-Droplit uses native macOS visual language: system materials, semantic colors,
+Compresso uses native macOS visual language: system materials, semantic colors,
 compact controls, and rounded utility surfaces.
 
 ## Main Settings Window
@@ -34,7 +34,7 @@ surface:
 The first-run onboarding surface uses the same main window with a native macOS
 material treatment:
 
-- root launch gate: `DroplitLaunchView` switches between onboarding and `ContentView`
+- root launch gate: `CompressoLaunchView` switches between onboarding and `ContentView`
 - persistence: `@AppStorage("onboarding.isComplete")`
 - visual style: `.ultraThinMaterial` content and window container background, hidden toolbar/header
 - layout: finite resizable window, centered scrollable content column, native footer buttons, bottom-center dot indicator
@@ -133,14 +133,14 @@ material treatment:
 
 ## Implementation Map
 
-- app launch shell lives in `DroplitLaunchView`; post-onboarding settings shell lives in `ContentView`
-- settings shell lives in `ContentView`; `DroplitModernSettingsRoot` uses `NavigationSplitView` on macOS 13+ and `DroplitLegacySettingsRoot` provides the macOS 11-12 fallback
+- app launch shell lives in `CompressoLaunchView`; post-onboarding settings shell lives in `ContentView`
+- settings shell lives in `ContentView`; `CompressoModernSettingsRoot` uses `NavigationSplitView` on macOS 13+ and `CompressoLegacySettingsRoot` provides the macOS 11-12 fallback
 - first-run onboarding lives in `Features/Onboarding` and uses only native transparent materials, SF Symbols, GroupBox, dot step indicators, and standard buttons
 - sidebar only lists top-level destinations; storage, conversion, and concurrency are surfaced from detail pages instead of duplicate source-list entries
-- sidebar search uses `DroplitSidebarSearchField`, an AppKit-backed search field that works across the deployment range
+- sidebar search uses `CompressoSidebarSearchField`, an AppKit-backed search field that works across the deployment range
 - sidebar rows stay flat and Mail-like: one SF Symbol, one title line, one optional secondary line
-- detail pages use `DroplitSettingsPage` for heading plus scroll layout
-- grouped settings content uses `DroplitSettingsGroup`, `DroplitSettingsControlRow`, `DroplitSettingsValueRow`, `DroplitSettingsMenuPicker`, and a shared aligned-row layout
+- detail pages use `CompressoSettingsPage` for heading plus scroll layout
+- grouped settings content uses `CompressoSettingsGroup`, `CompressoSettingsControlRow`, `CompressoSettingsValueRow`, `CompressoSettingsMenuPicker`, and a shared aligned-row layout
 - Quick Access style selection uses `QuickAccessPresentationStyle`; Stack is the current/default implementation and Box is the compact square implementation.
 - Quick Access presentation styles provide panel metrics and SwiftUI content through `QuickAccessPresentationStyleProviding`.
 - Box style uses `QuickAccessBoxPresentationStyle` for metrics and `QuickAccessBoxView` plus `QuickAccessBoxPreviewView` for its rounded square, top chrome controls, real-item layered preview, and item count pill.

@@ -7,7 +7,7 @@ Use this before first public update and before any signing/key migration.
 - Sparkle private key file:
 
 ```bash
-export SPARKLE_PRIVATE_KEY_FILE=$HOME/.config/droplit/sparkle_private_key.pem
+export SPARKLE_PRIVATE_KEY_FILE=$HOME/.config/compresso/sparkle_private_key.pem
 ```
 
 - Stable self-signed signing identity:
@@ -16,7 +16,7 @@ export SPARKLE_PRIVATE_KEY_FILE=$HOME/.config/droplit/sparkle_private_key.pem
 ./scripts/create-signing-cert.sh
 ```
 
-Default identity: `Droplit Self-Signed`.
+Default identity: `Compresso Self-Signed`.
 
 ## Same-Cert Update Test
 
@@ -28,12 +28,12 @@ Flow:
 
 1. builds a release archive
 2. creates local v99.0.0
-3. installs v99.0.0 to `/Applications/Droplit.app`
+3. installs v99.0.0 to `/Applications/Compresso.app`
 4. creates local v99.0.1 DMG
 5. signs the DMG with Sparkle EdDSA
 6. serves appcast at `http://localhost:8089/appcast.xml`
 
-Then open Droplit from `/Applications` and choose About -> Check for Updates.
+Then open Compresso from `/Applications` and choose About -> Check for Updates.
 
 Expected:
 
@@ -61,7 +61,7 @@ Expected:
 ./scripts/test-update-local.sh clean
 ```
 
-This removes `/tmp/test-droplit-sparkle-update` and stops the local server. It does not remove `/Applications/Droplit.app`.
+This removes `/tmp/test-compresso-sparkle-update` and stops the local server. It does not remove `/Applications/Compresso.app`.
 
 ## Notes
 

@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-CERT_NAME="${1:-Droplit Self-Signed}"
+CERT_NAME="${1:-Compresso Self-Signed}"
 VALIDITY_DAYS="${2:-3650}"
 
 TEMP_DIR=$(mktemp -d)
@@ -18,7 +18,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Droplit self-signed certificate generator"
+echo "Compresso self-signed certificate generator"
 echo "Certificate: $CERT_NAME"
 echo "Validity days: $VALIDITY_DAYS"
 echo
@@ -37,7 +37,7 @@ x509_extensions    = codesign
 
 [ req_dn ]
 CN = $CERT_NAME
-O  = Droplit
+O  = Compresso
 
 [ codesign ]
 keyUsage         = critical, digitalSignature

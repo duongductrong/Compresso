@@ -1,0 +1,198 @@
+import AppKit
+import SwiftUI
+
+struct OutputSettingsView: View {
+    @ObservedObject var quickAccess: QuickAccessManager
+    @State private var saveLocationEnabled = OptimizationOutputSettings.saveLocationEnabled
+    @State private var outputDirectory = OptimizationOutputSettings.outputDirectory
+    @State private var temporaryRetentionDays = OptimizationOutputSettings.temporaryRetentionDays
+
+    var body: some View {
+        CompressoSettingsPage(
+            title: CompressoSettingsSection.output.title,
+            subtitle: "Choose where optimized files are saved and how temporary results are retained."
+        ) {
+            CompressoSettingsGroup(
+                "Storage",
+                description: "Pick a permanent folder or let Compresso manage temporary outputs."
+            ) {
+                CompressoSettingsControlRow(
+                    title: "Save Location",
+                    subtitle: saveLocationEnabled ? "Keep optimized files in a selected folder" : "Use app-managed temporary storage"
+                ) {
+                    CompressoSettingsSwitch("Save Location", isOn: saveLocationBinding)
+                }
+
+                CompressoSettingsDivider()
+                CompressoSettingsControlRow(
+                    title: saveLocationEnabled ? "Destination Folder" : "Temporary Storage",
+                    subtitle: destinationDescription
+                ) {
+                    if saveLocationEnabled {
+                        Button("Choose...") {
+                            chooseOutputDirectory()
+                        }
+                    } else {
+                        temporaryStorageButton
+                    }
+                }
+
+                if saveLocationEnabled {
+                    CompressoSettingsDivider()
+                    CompressoSettingsControlRow(
+                        title: "Internal Storage",
+                        subtitle: temporaryStorageDescription
+                    ) {
+                        temporaryStorageButton
+                    }
+                } else {
+                    CompressoSettingsDivider()
+                    CompressoSettingsControlRow(
+                        title: "Delete After",
+                        subtitle: retentionText
+                    ) {
+                        retentionStepper
+                    }
+                }
+            }
+
+            CompressoSettingsGroup(
+                "Conversion",
+                description: "Control whether a format conversion replaces the source or creates a second file."
+            ) {
+                CompressoSettingsControlRow(
+                    title: "On Conversion",
+                    subtitle: quickAccess.conversionOutputMode.displayName
+                ) {
+                    CompressoSettingsMenuPicker(selection: $quickAccess.conversionOutputMode) {
+                        ForEach(ConversionOutputMode.allCases) { mode in
+                            Text(mode.displayName)
+                                .tag(mode)
+                        }
+                    }
+                }
+            }
+        }
+        .onAppear {
+            refreshState()
+        }
+    }
+
+    private var saveLocationBinding: Binding<Bool> {
+        Binding(
+            get: { saveLocationEnabled },
+            set: { newValue in
+                saveLocationEnabled = newValue
+                OptimizationOutputSettings.saveLocationEnabled = newValue
+                if !newValue {
+                    OptimizationTemporaryFileStore.cleanupExpiredOutputsInBackground(retentionDays: temporaryRetentionDays)
+                }
+            }
+        )
+    }
+
+    private var retentionBinding: Binding<Int> {
+        Binding(
+            get: { temporaryRetentionDays },
+            set: { newValue in
+                let clamped = OptimizationOutputSettings.clampTemporaryRetentionDays(newValue)
+                temporaryRetentionDays = clamped
+                OptimizationOutputSettings.temporaryRetentionDays = clamped
+                OptimizationTemporaryFileStore.cleanupExpiredOutputsInBackground(retentionDays: clamped)
+            }
+        )
+    }
+
+    private var destinationName: String {
+        if saveLocationEnabled {
+            return OptimizationOutputSettings.displayName(for: outputDirectory)
+        }
+        return "Temporary Storage"
+    }
+
+    private var destinationPath: String {
+        if saveLocationEnabled {
+            return outputDirectory.path
+        }
+        return OptimizationTemporaryFileStore.outputDirectory.path
+    }
+
+    private var destinationDescription: String {
+        "\(destinationName)\n\(destinationPath)"
+    }
+
+    private var temporaryStorageDescription: String {
+        "Temporary output folder\n\(OptimizationTemporaryFileStore.outputDirectory.path)"
+    }
+
+    private var retentionText: String {
+        temporaryRetentionDays == 1 ? "1 day" : "\(temporaryRetentionDays) days"
+    }
+
+    private var retentionStepper: some View {
+        HStack(spacing: 10) {
+            Text(retentionText)
+                .compressoMonospacedDigit()
+                .foregroundColor(.secondary)
+                .frame(minWidth: 62, alignment: .trailing)
+
+            Stepper(
+                "",
+                value: retentionBinding,
+                in: OptimizationOutputSettings.allowedTemporaryRetentionDays
+            )
+            .labelsHidden()
+        }
+    }
+
+    private var temporaryStorageButton: some View {
+        Button {
+            openTemporaryOutputDirectory()
+        } label: {
+            Label("Show in Finder", systemImage: "folder")
+        }
+    }
+
+    private func refreshState() {
+        saveLocationEnabled = OptimizationOutputSettings.saveLocationEnabled
+        outputDirectory = OptimizationOutputSettings.outputDirectory
+        temporaryRetentionDays = OptimizationOutputSettings.temporaryRetentionDays
+    }
+
+    private func chooseOutputDirectory() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose Output Folder"
+        panel.message = "Optimized files will be saved here."
+        panel.prompt = "Choose"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
+        panel.directoryURL = outputDirectory
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        OptimizationOutputSettings.outputDirectory = url
+        outputDirectory = url
+    }
+
+    private func openTemporaryOutputDirectory() {
+        do {
+            let url = try OptimizationTemporaryFileStore.ensureOutputDirectory()
+            guard NSWorkspace.shared.open(url) else {
+                showTemporaryStorageOpenError("Finder could not open \(url.path).")
+                return
+            }
+        } catch {
+            showTemporaryStorageOpenError(error.localizedDescription)
+        }
+    }
+
+    private func showTemporaryStorageOpenError(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = "Could Not Open Temporary Storage"
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+}

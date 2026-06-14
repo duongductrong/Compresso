@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Bump MARKETING_VERSION and CURRENT_PROJECT_VERSION in Droplit.xcodeproj.
+# Bump MARKETING_VERSION and CURRENT_PROJECT_VERSION in Compresso.xcodeproj.
 # Usage: ./scripts/bump-version.sh [patch|minor|major]
 
 set -euo pipefail
 
-PBXPROJ="Droplit.xcodeproj/project.pbxproj"
+PBXPROJ="Compresso.xcodeproj/project.pbxproj"
 BUMP_TYPE="${1:-patch}"
 
 if [ ! -f "$PBXPROJ" ]; then

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepend a Sparkle appcast item for a released Droplit DMG.
+# Prepend a Sparkle appcast item for a released Compresso DMG.
 # Usage: ./scripts/update-appcast.sh <version> <build_number> <dmg_path> [appcast_file] [ed_signature] [release_notes_html]
 
 set -euo pipefail
@@ -33,7 +33,7 @@ else
 fi
 
 PUB_DATE=$(date -u '+%a, %d %b %Y %H:%M:%S +0000')
-DOWNLOAD_URL="https://github.com/duongductrong/Droplit/releases/download/v${VERSION}/Droplit-v${VERSION}.dmg"
+DOWNLOAD_URL="https://github.com/duongductrong/Compresso/releases/download/v${VERSION}/Compresso-v${VERSION}.dmg"
 
 if [ -z "$RELEASE_NOTES_HTML" ]; then
   RELEASE_NOTES_HTML="<h3>Maintenance</h3><ul><li>Bug fixes and improvements</li></ul>"

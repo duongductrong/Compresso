@@ -1,12 +1,12 @@
 # Release Workflow
 
-Droplit uses Sparkle for in-app updates and GitHub Releases for DMG distribution.
+Compresso uses Sparkle for in-app updates and GitHub Releases for DMG distribution.
 
 ## Release Shape
 
-- Artifact: `Droplit-v<version>.dmg`
+- Artifact: `Compresso-v<version>.dmg`
 - Appcast: `appcast.xml`
-- Feed URL: `https://raw.githubusercontent.com/duongductrong/Droplit/master/appcast.xml`
+- Feed URL: `https://raw.githubusercontent.com/duongductrong/Compresso/master/appcast.xml`
 - Minimum macOS in appcast: `11.0`
 - Sparkle package: `2.9.2`
 
@@ -33,7 +33,7 @@ Keep all three false by default.
 
 ## Optional Variables
 
-- `SELF_SIGNED_CODE_SIGN_IDENTITY`: self-signed certificate Common Name. Defaults to `Droplit Self-Signed`.
+- `SELF_SIGNED_CODE_SIGN_IDENTITY`: self-signed certificate Common Name. Defaults to `Compresso Self-Signed`.
 
 ## Signing Policy
 
@@ -79,7 +79,7 @@ The publish workflow:
 2. signs the app using the resolved signing strategy
 3. verifies the app signature
 4. checks signing continuity with previous release
-5. creates `Droplit-vX.Y.Z.dmg`
+5. creates `Compresso-vX.Y.Z.dmg`
 6. notarizes when Apple credentials exist
 7. signs the DMG with Sparkle EdDSA
 8. creates the GitHub Release
@@ -99,7 +99,7 @@ If you pass a custom cert name, set `SELF_SIGNED_CODE_SIGN_IDENTITY` to the same
 The Sparkle private key used for the current public key was generated locally and exported to:
 
 ```bash
-$HOME/.config/droplit/sparkle_private_key.pem
+$HOME/.config/compresso/sparkle_private_key.pem
 ```
 
 Add that file content as the `SPARKLE_PRIVATE_KEY` GitHub secret.

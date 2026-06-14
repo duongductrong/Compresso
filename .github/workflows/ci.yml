@@ -28,8 +28,8 @@ jobs:
         run: |
           set -euo pipefail
           xcodebuild -resolvePackageDependencies \
-            -project Droplit.xcodeproj \
-            -scheme Droplit \
+            -project Compresso.xcodeproj \
+            -scheme Compresso \
             -derivedDataPath build/DerivedData
 
       - name: Build
@@ -38,8 +38,8 @@ jobs:
           mkdir -p build
 
           if ! xcodebuild \
-            -project Droplit.xcodeproj \
-            -scheme Droplit \
+            -project Compresso.xcodeproj \
+            -scheme Compresso \
             -configuration Release \
             -derivedDataPath build/DerivedData \
             CODE_SIGN_IDENTITY="" \
@@ -60,9 +60,9 @@ jobs:
 
       - name: Verify app bundle
         run: |
-          APP_PATH="build/DerivedData/Build/Products/Release/Droplit.app"
+          APP_PATH="build/DerivedData/Build/Products/Release/Compresso.app"
           if [ ! -d "$APP_PATH" ]; then
-            echo "::error::Droplit.app not found at expected path"
+            echo "::error::Compresso.app not found at expected path"
             exit 1
           fi
           echo "Build successful: $APP_PATH"
