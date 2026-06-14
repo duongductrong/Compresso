@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+GENERATOR="$ROOT_DIR/scripts/generate-icon-composer-appiconset.sh"
+
+HAS_INPUT=0
+HAS_APPICONSET=0
+HAS_PREFIX=0
+EXPECTS_VALUE=""
+
+for arg in "$@"; do
+  if [[ -n "$EXPECTS_VALUE" ]]; then
+    EXPECTS_VALUE=""
+    continue
+  fi
+
+  case "$arg" in
+    --icon-document|--source-png)
+      HAS_INPUT=1
+      EXPECTS_VALUE="$arg"
+      ;;
+    --appiconset)
+      HAS_APPICONSET=1
+      EXPECTS_VALUE="$arg"
+      ;;
+    --filename-prefix)
+      HAS_PREFIX=1
+      EXPECTS_VALUE="$arg"
+      ;;
+    --canvas-size|--artwork-size|--platform|--rendition)
+      EXPECTS_VALUE="$arg"
+      ;;
+    --*)
+      ;;
+    *)
+      HAS_INPUT=1
+      ;;
+  esac
+done
+
+DEFAULT_ARGS=()
+[[ "$HAS_INPUT" -eq 1 ]] || DEFAULT_ARGS+=(--icon-document "$ROOT_DIR/Compresso.icon")
+[[ "$HAS_APPICONSET" -eq 1 ]] || DEFAULT_ARGS+=(--appiconset "$ROOT_DIR/Compresso/Assets.xcassets/AppIcon.appiconset")
+[[ "$HAS_PREFIX" -eq 1 ]] || DEFAULT_ARGS+=(--filename-prefix "Compresso")
+
+"$GENERATOR" "${DEFAULT_ARGS[@]}" "$@"
+
+# Copy the generated 256x256 icon to the assets directory for README/marketing
+echo "Copying 256x256 macOS icon for README..."
+cp "$ROOT_DIR/Compresso/Assets.xcassets/AppIcon.appiconset/Compresso-macOS-256x256@1x.png" "$ROOT_DIR/assets/Compresso-macOS-Default-256x256@1x.png"
+
