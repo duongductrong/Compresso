@@ -17,6 +17,7 @@ struct QuickAccessCardView: View, Equatable {
     let onConvert: (UUID, QuickAccessConversionTarget) -> Void
     let reduceMotion: Bool
     @State private var isHovering = false
+    @State private var isHoveringClose = false
     @State private var isDismissing = false
     @State private var isDraggingToDismiss = false
     @State private var isDraggingExternally = false
@@ -80,7 +81,15 @@ struct QuickAccessCardView: View, Equatable {
         }
         .frame(width: QuickAccessLayout.cardWidth, height: QuickAccessLayout.cardHeight)
         .clipShape(cardShape)
-        .overlay(cardShape.strokeBorder(.white.opacity(0.16), lineWidth: 1))
+        .contentShape(cardShape)
+        .background(
+            cardShape
+                .fill(Color.black.opacity(0.1))
+        )
+        .overlay(
+            cardShape
+                .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+        )
         .compositingGroup()
         .quickAccessCardShadow(isRaised: isHovering)
         .scaleEffect(isHovering && !reduceMotion ? 1.008 : 1)
@@ -322,9 +331,9 @@ struct QuickAccessCardView: View, Equatable {
             .aspectRatio(contentMode: .fill)
             .frame(width: QuickAccessLayout.cardWidth, height: QuickAccessLayout.cardHeight)
             .clipped()
-            .saturation(0.72)
-            .brightness(-0.04)
+            .blur(radius: isHovering ? 2 : 0)
             .overlay(Color.black.opacity(item.state.isWaitingOrProcessing ? 0.34 : 0.20))
+            .allowsHitTesting(false)
     }
 
     private var readabilityOverlay: some View {
@@ -367,14 +376,16 @@ struct QuickAccessCardView: View, Equatable {
                 onRemove(item.id)
             } label: {
                 Image(systemName: item.state == .processing ? "stop.fill" : "xmark")
-                    .font(.system(size: QuickAccessLayout.closeButtonIconSize, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .font(.system(size: QuickAccessLayout.closeButtonIconSize, weight: .bold))
+                    .foregroundColor(.white)
                     .frame(
                         width: QuickAccessLayout.closeButtonVisualSize,
                         height: QuickAccessLayout.closeButtonVisualSize
                     )
-                    .compressoMaterialBackground(.regular, in: Circle())
-                    .overlay(Circle().stroke(.white.opacity(0.24), lineWidth: 1))
+                    .background(
+                        Circle()
+                            .fill(Color.black.opacity(isHoveringClose ? 0.35 : 0.6))
+                    )
                     .frame(
                         width: QuickAccessLayout.closeButtonHitSize,
                         height: QuickAccessLayout.closeButtonHitSize
@@ -382,6 +393,9 @@ struct QuickAccessCardView: View, Equatable {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .onHover { hovering in
+                isHoveringClose = hovering
+            }
             .contentShape(Rectangle())
             .help(item.state == .processing ? "Stop" : "Remove")
             .quickAccessCursor(.pointingHand)
@@ -390,18 +404,14 @@ struct QuickAccessCardView: View, Equatable {
 
             Image(systemName: item.kind.systemImage)
                 .font(.system(size: QuickAccessLayout.kindBadgeIconSize, weight: .semibold))
-                .foregroundColor(.secondary)
+                .foregroundColor(.white.opacity(0.9))
                 .frame(
                     width: QuickAccessLayout.kindBadgeWidth,
                     height: QuickAccessLayout.kindBadgeHeight
                 )
-                .compressoMaterialBackground(
-                    .regular,
-                    in: RoundedRectangle(cornerRadius: QuickAccessLayout.kindBadgeCornerRadius, style: .continuous)
-                )
-                .overlay(
+                .background(
                     RoundedRectangle(cornerRadius: QuickAccessLayout.kindBadgeCornerRadius, style: .continuous)
-                        .stroke(.white.opacity(0.20), lineWidth: 1)
+                        .fill(Color.black.opacity(0.6))
                 )
         }
         .padding(.horizontal, QuickAccessLayout.topControlHorizontalPadding)
@@ -607,16 +617,16 @@ struct QuickAccessCardShadowModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .shadow(
-                color: .black.opacity(isRaised ? 0.11 : 0.08),
-                radius: isRaised ? 34 : 29,
+                color: Color.black.opacity(isRaised ? 0.18 : 0.15),
+                radius: isRaised ? 12 : 8,
                 x: 0,
-                y: isRaised ? 15 : 12
+                y: isRaised ? 6 : 4
             )
             .shadow(
-                color: .black.opacity(isRaised ? 0.055 : 0.04),
-                radius: isRaised ? 11 : 8,
+                color: Color.black.opacity(isRaised ? 0.10 : 0.08),
+                radius: isRaised ? 3 : 2,
                 x: 0,
-                y: isRaised ? 4 : 3
+                y: 1
             )
     }
 }

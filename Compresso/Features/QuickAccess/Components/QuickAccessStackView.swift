@@ -210,7 +210,7 @@ private struct QuickAccessOverflowCardView: View {
         }
         .frame(width: QuickAccessLayout.cardWidth, height: QuickAccessLayout.overflowCardHeight)
         .clipShape(cardShape)
-        .overlay(cardShape.strokeBorder(.white.opacity(0.16), lineWidth: 1))
+        .overlay(cardShape.strokeBorder(.white.opacity(0.20), lineWidth: 1))
         .compositingGroup()
         .quickAccessCardShadow(isRaised: isHovering)
         .opacity(isDraggingExternally ? 0.62 : 1)

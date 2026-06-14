@@ -279,8 +279,8 @@ nonisolated enum QuickAccessCompletedCardDisplayDuration: String, CaseIterable, 
 }
 
 nonisolated enum QuickAccessLayout {
-    static let cardWidth: CGFloat = 184
-    static let cardHeight: CGFloat = 118
+    static let cardWidth: CGFloat = 180
+    static let cardHeight: CGFloat = 112
     static let overflowCardHeight: CGFloat = cardHeight
     static let conversionActionRowHeight: CGFloat = 16
     static let conversionActionVisualHeight: CGFloat = 13
@@ -288,17 +288,17 @@ nonisolated enum QuickAccessLayout {
     static let conversionActionButtonSpacing: CGFloat = 3
     static let conversionActionFontSize: CGFloat = 6.5
     static let closeButtonHitSize: CGFloat = 30
-    static let closeButtonVisualSize: CGFloat = 18
-    static let closeButtonIconSize: CGFloat = 8
+    static let closeButtonVisualSize: CGFloat = 20
+    static let closeButtonIconSize: CGFloat = 10
     static let kindBadgeWidth: CGFloat = 24
     static let kindBadgeHeight: CGFloat = 16
     static let kindBadgeIconSize: CGFloat = 9
     static let kindBadgeCornerRadius: CGFloat = 5
-    static let topControlHorizontalPadding: CGFloat = 5
-    static let topControlTopPadding: CGFloat = 4
-    static let cornerRadius: CGFloat = 14
-    static let cardSpacing: CGFloat = 10
-    static let shadowMargin: CGFloat = 58
+    static let topControlHorizontalPadding: CGFloat = 6
+    static let topControlTopPadding: CGFloat = 6
+    static let cornerRadius: CGFloat = 16
+    static let cardSpacing: CGFloat = 8
+    static let shadowMargin: CGFloat = 12
     static let containerPadding: CGFloat = shadowMargin
     static let stackMaximumItems = 4
 
