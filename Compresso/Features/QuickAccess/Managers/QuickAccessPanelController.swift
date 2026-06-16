@@ -24,7 +24,6 @@ final class QuickAccessPanelController: NSObject, NSWindowDelegate {
         position: QuickAccessPosition,
         activeContentHeight: CGFloat,
         shadowMargin: CGFloat,
-        handlesKeyboardShortcuts: Bool,
         onCancel: @escaping () -> Void
     ) {
         guard !isAnimating else { return }
@@ -46,7 +45,7 @@ final class QuickAccessPanelController: NSObject, NSWindowDelegate {
         let hostingView = NSHostingView(rootView: content)
         hostingView.frame = NSRect(origin: .zero, size: size)
         panel.delegate = self
-        panel.handlesKeyboardShortcuts = handlesKeyboardShortcuts
+
         panel.onEscapeKey = onCancel
         panel.contentView = hostingView
         panel.updatePassthroughRegion(activeContentHeight: activeContentHeight, edge: position.edge)

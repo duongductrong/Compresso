@@ -49,7 +49,7 @@ struct QueueSettingsView: View {
     private var queueSummaryText: String {
         let total = quickAccess.items.count
         guard total > 0 else { return "No active jobs" }
-        return "\(quickAccess.processingCount) running, \(quickAccess.stagedCount) ready, \(quickAccess.queuedCount) queued, \(total) total"
+        return "\(quickAccess.processingCount) running, \(quickAccess.queuedCount) queued, \(total) total"
     }
 }
 

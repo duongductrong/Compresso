@@ -1,8 +1,6 @@
 import SwiftUI
 
-nonisolated struct QuickAccessStackPresentationStyle: QuickAccessPresentationStyleProviding {
-    let style: QuickAccessPresentationStyle = .stack
-
+nonisolated struct QuickAccessStackPresentationStyle {
     func metrics(for context: QuickAccessPresentationContext) -> QuickAccessPresentationMetrics {
         let visibleItems = stackItems(in: context)
         let hiddenCount = max(context.items.count - visibleItems.count, 0)
@@ -28,14 +26,6 @@ nonisolated struct QuickAccessStackPresentationStyle: QuickAccessPresentationSty
             visibleElementCount: visibleElementCount,
             shadowMargin: QuickAccessLayout.shadowMargin
         )
-    }
-
-    @MainActor
-    func makeView(
-        context: QuickAccessPresentationContext,
-        actions: QuickAccessPresentationActions
-    ) -> AnyView {
-        AnyView(QuickAccessStackView(context: context, actions: actions))
     }
 
     func stackItems(in context: QuickAccessPresentationContext) -> [QuickAccessItem] {

@@ -115,7 +115,6 @@ struct GeneralSettingsView: View {
         guard !quickAccess.items.isEmpty else { return "No jobs yet" }
         let parts = [
             quickAccess.processingCount > 0 ? "\(quickAccess.processingCount) running" : nil,
-            quickAccess.stagedCount > 0 ? "\(quickAccess.stagedCount) ready" : nil,
             quickAccess.queuedCount > 0 ? "\(quickAccess.queuedCount) queued" : nil
         ].compactMap { $0 }
         return parts.isEmpty ? "\(quickAccess.items.count) total" : parts.joined(separator: ", ")

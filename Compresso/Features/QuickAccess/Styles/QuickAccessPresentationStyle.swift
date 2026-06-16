@@ -1,62 +1,6 @@
 import Foundation
 import SwiftUI
 
-nonisolated enum QuickAccessPresentationStyle: String, CaseIterable, Codable, Identifiable {
-    case stack
-    case box
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .stack: "Stack"
-        case .box: "Box"
-        }
-    }
-
-    var description: String {
-        switch self {
-        case .stack:
-            return "Vertical floating cards with a drop target and overflow summary"
-        case .box:
-            return "Compact square preview with layered media cards and count pill"
-        }
-    }
-
-    var provider: QuickAccessPresentationStyleProviding {
-        switch self {
-        case .stack:
-            return QuickAccessStackPresentationStyle()
-        case .box:
-            return QuickAccessBoxPresentationStyle()
-        }
-    }
-
-    func metrics(for context: QuickAccessPresentationContext) -> QuickAccessPresentationMetrics {
-        provider.metrics(for: context)
-    }
-
-    @MainActor
-    func makeView(
-        context: QuickAccessPresentationContext,
-        actions: QuickAccessPresentationActions
-    ) -> AnyView {
-        provider.makeView(context: context, actions: actions)
-    }
-}
-
-nonisolated protocol QuickAccessPresentationStyleProviding {
-    var style: QuickAccessPresentationStyle { get }
-
-    func metrics(for context: QuickAccessPresentationContext) -> QuickAccessPresentationMetrics
-
-    @MainActor
-    func makeView(
-        context: QuickAccessPresentationContext,
-        actions: QuickAccessPresentationActions
-    ) -> AnyView
-}
-
 nonisolated struct QuickAccessPresentationContext {
     let items: [QuickAccessItem]
     let isDropPlaceholderVisible: Bool
@@ -80,22 +24,19 @@ nonisolated struct QuickAccessPresentationMetrics {
 
 nonisolated struct QuickAccessPresentationActions {
     let ingestDroppedURLs: ([URL]) -> Void
-    let stageDroppedURLs: ([URL]) -> Void
     let dismissSurface: () -> Void
     let removeItem: (UUID) -> Void
     let removeAllItems: () -> Void
-    let clearItemsKeepingSurfaceVisible: () -> Void
     let openItem: (UUID) -> Void
     let revealOutput: (UUID) -> Void
     let convertItem: (UUID, QuickAccessConversionTarget) -> Void
-    let processAllStagedItems: () -> Void
 }
 
 struct QuickAccessPresentationView: View {
     @ObservedObject var manager: QuickAccessManager
 
     var body: some View {
-        manager.presentationStyle.makeView(
+        QuickAccessStackView(
             context: manager.presentationContext,
             actions: manager.presentationActions
         )
@@ -132,12 +73,6 @@ extension QuickAccessManager {
                     self.ingestDroppedURLs(urls)
                 }
             },
-            stageDroppedURLs: { [weak self] urls in
-                guard let self else { return }
-                runQuickAccessPresentationAction {
-                    self.stageDroppedURLs(urls)
-                }
-            },
             dismissSurface: { [weak self] in
                 guard let self else { return }
                 runQuickAccessPresentationAction {
@@ -154,12 +89,6 @@ extension QuickAccessManager {
                 guard let self else { return }
                 runQuickAccessPresentationAction {
                     self.removeAllItems()
-                }
-            },
-            clearItemsKeepingSurfaceVisible: { [weak self] in
-                guard let self else { return }
-                runQuickAccessPresentationAction {
-                    self.removeAllItems(keepsSurfaceVisible: true)
                 }
             },
             openItem: { [weak self] id in
@@ -179,17 +108,11 @@ extension QuickAccessManager {
                 runQuickAccessPresentationAction {
                     self.convertItem(id: id, to: target)
                 }
-            },
-            processAllStagedItems: { [weak self] in
-                guard let self else { return }
-                runQuickAccessPresentationAction {
-                    self.processAllStagedItems()
-                }
             }
         )
     }
 
     var presentationMetrics: QuickAccessPresentationMetrics {
-        presentationStyle.metrics(for: presentationContext)
+        QuickAccessStackPresentationStyle().metrics(for: presentationContext)
     }
 }

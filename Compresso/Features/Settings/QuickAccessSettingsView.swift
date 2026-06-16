@@ -36,19 +36,6 @@ struct QuickAccessSettingsView: View {
 
                 CompressoSettingsDivider()
                 CompressoSettingsControlRow(
-                    title: "Style",
-                    subtitle: quickAccess.presentationStyle.description
-                ) {
-                    CompressoSettingsMenuPicker(selection: $quickAccess.presentationStyle) {
-                        ForEach(QuickAccessPresentationStyle.allCases) { style in
-                            Text(style.displayName)
-                                .tag(style)
-                        }
-                    }
-                }
-
-                CompressoSettingsDivider()
-                CompressoSettingsControlRow(
                     title: "Edge",
                     subtitle: "Where the panel attaches"
                 ) {

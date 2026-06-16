@@ -2,7 +2,6 @@ import AppKit
 
 final class QuickAccessPanel: NSPanel {
     var onEscapeKey: (() -> Void)?
-    var handlesKeyboardShortcuts = false
 
     private var activeContentHeight: CGFloat = 0
     private var activeEdge: QuickAccessPanelEdge = .bottom
@@ -113,6 +112,6 @@ final class QuickAccessPanel: NSPanel {
         onEscapeKey?()
     }
 
-    override var canBecomeKey: Bool { handlesKeyboardShortcuts }
+    override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 }

@@ -12,17 +12,6 @@ final class QuickAccessManager: ObservableObject {
     @Published private(set) var pendingDropSummary: QuickAccessPendingDropSummary?
     @Published private(set) var maximumConcurrentOptimizations: Int = 3
     @Published private(set) var holdTriggerDuration: TimeInterval = 1
-    @Published var presentationStyle: QuickAccessPresentationStyle = .stack {
-        didSet {
-            guard presentationStyle != oldValue else { return }
-            UserDefaults.standard.set(presentationStyle.rawValue, forKey: Keys.presentationStyle)
-            if presentationStyle != .box, stagedCount > 0 {
-                processAllStagedItems()
-                return
-            }
-            refreshPanel()
-        }
-    }
     @Published var completedCardDisplayDuration: QuickAccessCompletedCardDisplayDuration = .fifteenSeconds {
         didSet {
             guard completedCardDisplayDuration != oldValue else { return }
@@ -60,9 +49,6 @@ final class QuickAccessManager: ObservableObject {
         items.filter { $0.state == .queued }.count
     }
 
-    var stagedCount: Int {
-        items.filter { $0.state == .staged }.count
-    }
 
     var processingCount: Int {
         items.filter { $0.state == .processing }.count
@@ -70,7 +56,6 @@ final class QuickAccessManager: ObservableObject {
 
     private enum Keys {
         static let position = "quickAccess.position"
-        static let presentationStyle = "quickAccess.presentationStyle"
         static let triggerInteraction = "quickAccess.triggerInteraction"
         static let holdTriggerDuration = "quickAccess.holdTriggerDuration"
         static let maximumConcurrentOptimizations = "quickAccess.maximumConcurrentOptimizations"
@@ -93,7 +78,7 @@ final class QuickAccessManager: ObservableObject {
     private var lastCompletedDragPasteboardChangeCount = NSPasteboard(name: .drag).changeCount
     private var currentDragPasteboardChangeCount: Int?
     private var isCurrentDragPayloadOptimizable = false
-    private var keepsEmptyBoxOpen = false
+
     private var processTasks: [UUID: Task<Void, Never>] = [:]
     private var thumbnailTasks: [UUID: Task<Void, Never>] = [:]
     private var elapsedTasks: [UUID: Task<Void, Never>] = [:]
@@ -110,10 +95,7 @@ final class QuickAccessManager: ObservableObject {
            let saved = QuickAccessPosition(rawValue: raw) {
             position = saved
         }
-        if let raw = UserDefaults.standard.string(forKey: Keys.presentationStyle),
-           let saved = QuickAccessPresentationStyle(rawValue: raw) {
-            presentationStyle = saved
-        }
+
         if let raw = UserDefaults.standard.string(forKey: Keys.triggerInteraction),
            let saved = QuickAccessTriggerInteraction(rawValue: raw) {
             triggerInteraction = saved
@@ -184,7 +166,6 @@ final class QuickAccessManager: ObservableObject {
         holdTriggerTask?.cancel()
         holdTriggerTask = nil
         isDragSessionActive = false
-        keepsEmptyBoxOpen = false
         resetDragPayloadState(markCurrentPasteboardConsumed: true)
         processTasks.values.forEach { $0.cancel() }
         thumbnailTasks.values.forEach { $0.cancel() }
@@ -204,7 +185,6 @@ final class QuickAccessManager: ObservableObject {
     func dismissQuickAccessSurface() {
         placeholderTimeoutTask?.cancel()
         placeholderTimeoutTask = nil
-        keepsEmptyBoxOpen = false
 
         if isDropPlaceholderVisible {
             withAnimation(QuickAccessAnimations.cardRemove) {
@@ -217,7 +197,6 @@ final class QuickAccessManager: ObservableObject {
 
     private func showDropPlaceholder(shouldTimeout: Bool) {
         placeholderTimeoutTask?.cancel()
-        keepsEmptyBoxOpen = false
         withAnimation(QuickAccessAnimations.cardInsert) {
             isDropPlaceholderVisible = true
         }
@@ -231,9 +210,6 @@ final class QuickAccessManager: ObservableObject {
         ingestDroppedURLs(urls, initialState: .queued, startsAutomatically: true)
     }
 
-    func stageDroppedURLs(_ urls: [URL]) {
-        ingestDroppedURLs(urls, initialState: .staged, startsAutomatically: false)
-    }
 
     private func ingestDroppedURLs(
         _ urls: [URL],
@@ -244,7 +220,6 @@ final class QuickAccessManager: ObservableObject {
         guard !supported.isEmpty else { return }
 
         isDragSessionActive = false
-        keepsEmptyBoxOpen = false
         resetDragTriggerState()
         resetDragPayloadState(markCurrentPasteboardConsumed: true)
         placeholderTimeoutTask?.cancel()
@@ -297,10 +272,8 @@ final class QuickAccessManager: ObservableObject {
         schedulePendingJobs()
     }
 
-    func removeAllItems(keepsSurfaceVisible: Bool = false) {
-        if !keepsSurfaceVisible {
-            panelController.hideImmediately()
-        }
+    func removeAllItems() {
+        panelController.hideImmediately()
 
         processTasks.values.forEach { $0.cancel() }
         thumbnailTasks.values.forEach { $0.cancel() }
@@ -312,18 +285,9 @@ final class QuickAccessManager: ObservableObject {
         completedDismissTasks.removeAll()
         placeholderTimeoutTask?.cancel()
         placeholderTimeoutTask = nil
-        keepsEmptyBoxOpen = keepsSurfaceVisible
 
-        if keepsSurfaceVisible {
-            withAnimation(QuickAccessAnimations.cardRemove) {
-                items.removeAll()
-                isDropPlaceholderVisible = true
-            }
-            refreshPanel()
-        } else {
-            items.removeAll()
-            isDropPlaceholderVisible = false
-        }
+        items.removeAll()
+        isDropPlaceholderVisible = false
     }
 
     func revealOutput(for id: UUID) {
@@ -374,27 +338,6 @@ final class QuickAccessManager: ObservableObject {
         refreshPanel()
     }
 
-    func processAllStagedItems() {
-        let stagedIDs = items
-            .filter { $0.state == .staged }
-            .map(\.id)
-        guard !stagedIDs.isEmpty else { return }
-
-        for id in stagedIDs {
-            guard let index = items.firstIndex(where: { $0.id == id }) else { continue }
-            items[index].state = .queued
-            items[index].elapsed = 0
-            items[index].progress = nil
-            items[index].optimizedBytes = nil
-            items[index].outputURL = nil
-            items[index].failureMessage = nil
-            items[index].activeOperationName = "Optimizing"
-            items[index].activeConversionTarget = items[index].sourceConversionTarget
-        }
-
-        refreshPanel()
-        schedulePendingJobs()
-    }
 
     private func recordDrag(location: CGPoint, timestamp: TimeInterval) {
         if lastDragEventTimestamp > 0,
@@ -408,9 +351,6 @@ final class QuickAccessManager: ObservableObject {
         placeholderTimeoutTask?.cancel()
         let hasOptimizableDragPayload = refreshCurrentDragPayloadEligibility()
 
-        if activateVisibleBoxDropTargetIfNeeded(hasOptimizableDragPayload: hasOptimizableDragPayload) {
-            return
-        }
 
         switch triggerInteraction {
         case .shake:
@@ -473,7 +413,6 @@ final class QuickAccessManager: ObservableObject {
         resetDragTriggerState()
         resetDragPayloadState(markCurrentPasteboardConsumed: true)
         guard isDropPlaceholderVisible else { return }
-        guard !keepsEmptyBoxOpen else { return }
         schedulePlaceholderTimeout(after: placeholderPostDragTimeout)
     }
 
@@ -495,22 +434,6 @@ final class QuickAccessManager: ObservableObject {
         return isCurrentDragPayloadOptimizable
     }
 
-    private func activateVisibleBoxDropTargetIfNeeded(hasOptimizableDragPayload: Bool) -> Bool {
-        guard hasOptimizableDragPayload,
-              presentationStyle == .box,
-              !items.isEmpty else {
-            return false
-        }
-
-        shakeDetector.reset()
-        holdTriggerTask?.cancel()
-        holdTriggerTask = nil
-
-        if !isDropPlaceholderVisible {
-            showDropPlaceholder(shouldTimeout: false)
-        }
-        return true
-    }
 
     private func resetDragPayloadState(markCurrentPasteboardConsumed: Bool) {
         if markCurrentPasteboardConsumed {
@@ -726,7 +649,7 @@ final class QuickAccessManager: ObservableObject {
     }
 
     private func hidePlaceholderIfIdle() {
-        guard isDropPlaceholderVisible, !isDragSessionActive, !keepsEmptyBoxOpen else { return }
+        guard isDropPlaceholderVisible, !isDragSessionActive else { return }
         withAnimation(QuickAccessAnimations.cardRemove) {
             isDropPlaceholderVisible = false
         }
@@ -750,7 +673,6 @@ final class QuickAccessManager: ObservableObject {
                 position: position,
                 activeContentHeight: metrics.activeContentHeight,
                 shadowMargin: metrics.shadowMargin,
-                handlesKeyboardShortcuts: presentationStyle == .box,
                 onCancel: { [weak self] in
                     self?.handlePanelCancel()
                 }
@@ -759,12 +681,7 @@ final class QuickAccessManager: ObservableObject {
     }
 
     private func handlePanelCancel() {
-        switch presentationStyle {
-        case .box:
-            removeAllItems()
-        case .stack:
-            dismissQuickAccessSurface()
-        }
+        dismissQuickAccessSurface()
     }
 
     private func fileSize(at url: URL) -> Int64 {

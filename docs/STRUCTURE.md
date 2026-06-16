@@ -57,10 +57,6 @@ Compresso/
 
     QuickAccess/
       Components/
-        QuickAccessBoxActionMenu.swift
-        QuickAccessBoxEmptyStateView.swift
-        QuickAccessBoxPreviewView.swift
-        QuickAccessBoxView.swift
         QuickAccessCardView.swift
         QuickAccessDropReceiverView.swift
         QuickAccessDropZoneCardView.swift
@@ -76,7 +72,6 @@ Compresso/
         QuickAccessShakeDetector.swift
         QuickAccessThumbnailGenerator.swift
       Styles/
-        QuickAccessBoxPresentationStyle.swift
         QuickAccessPresentationStyle.swift
         QuickAccessStackPresentationStyle.swift
       QuickAccessPanel.swift
@@ -189,23 +184,11 @@ docs/
     Completed stack cards drag their optimized or converted output when it exists; staged, queued, processing, and failed stack cards drag the original source file.
 26. External drag uses file URL pasteboard payloads for broad Finder, native app, and browser compatibility.
     Stack overflow drags all available item files together.
-    Box preview stack layers drag all available Box item files together, resolving each file to its source before optimization or output after optimization.
-    Box popover cells drag their source file before optimization or their output file after optimization.
-    After a successful Box preview stack drag, the Box clears its stacked items and stays open in the empty drop state until the user closes it.
 27. Double-click a card to open the optimized or converted output, falling back to the source file when output is unavailable.
 28. Completed Quick Access cards stay visible for the configured result-card duration, defaulting to 15 seconds; selecting Never keeps them visible until removed.
 29. When enabled in Quick Access settings, each finished optimized output file is copied to the system clipboard.
-30. The default Stack presentation shows the newest cards plus an overflow summary when the queue is larger than the panel should display.
-31. The Box presentation shows a compact dark rounded square, top chrome controls, real-item layered media preview, and an item count pill while reusing the same trigger and position settings.
-    Before actual dropped items exist, Box shows an empty drop CTA instead of the stacked preview.
-    Once items exist, Box stacks at most the newest three real `QuickAccessItem` thumbnails and does not synthesize mock preview layers.
-32. Box drops stage items first; the top-right run button uses the same chrome styling as close, opens a compact batch action popover, and then moves the staged batch into the optimization queue after user selection.
-    A visible Box accepts supported incoming file drags directly, so users can add to an existing Box without summoning the placeholder again.
-    While the batch runs, Box surfaces completion progress in the count pill and per-item status in the grid popover.
-    Completed Box batches show total original-to-optimized size in the count pill and popover header.
-    The top-left close clears every dropped item, and the bottom count pill opens a centered three-column media-only grid popover with clipped thumbnails, truncated names, and compact file-type/status/size text.
-33. Quick Access presentation styles own their own visible item selection, panel size, active hit region height, outer shadow margin, and SwiftUI root view.
-34. To add another visual treatment, add a `QuickAccessPresentationStyle` case and a `QuickAccessPresentationStyleProviding` implementation that maps the shared context/actions into its own view.
+30. The Stack presentation shows the newest cards plus an overflow summary when the queue is larger than the panel should display.
+31. Quick Access presentation owns visible item selection, panel size, active hit region height, outer shadow margin, and SwiftUI root view.
 
 Output destination, internal temporary folder access, and retention are changed from the Settings window Output configuration.
 Parallel job count is changed from the Settings window Concurrency configuration.
