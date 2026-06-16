@@ -617,16 +617,16 @@ struct QuickAccessCardShadowModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .shadow(
-                color: Color.black.opacity(isRaised ? 0.18 : 0.15),
-                radius: isRaised ? 12 : 8,
+                color: Color.black.opacity(isRaised ? 0.08 : 0.05),
+                radius: isRaised ? 16 : 10,
                 x: 0,
-                y: isRaised ? 6 : 4
+                y: isRaised ? 8 : 4
             )
             .shadow(
-                color: Color.black.opacity(isRaised ? 0.10 : 0.08),
-                radius: isRaised ? 3 : 2,
+                color: Color.black.opacity(isRaised ? 0.10 : 0.07),
+                radius: isRaised ? 4 : 3,
                 x: 0,
-                y: 1
+                y: isRaised ? 2 : 1
             )
     }
 }

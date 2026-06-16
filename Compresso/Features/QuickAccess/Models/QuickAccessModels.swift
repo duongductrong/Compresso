@@ -298,7 +298,7 @@ nonisolated enum QuickAccessLayout {
     static let topControlTopPadding: CGFloat = 6
     static let cornerRadius: CGFloat = 16
     static let cardSpacing: CGFloat = 8
-    static let shadowMargin: CGFloat = 12
+    static let shadowMargin: CGFloat = 24
     static let containerPadding: CGFloat = shadowMargin
     static let stackMaximumItems = 4
 
