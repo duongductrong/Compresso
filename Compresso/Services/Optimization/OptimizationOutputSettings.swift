@@ -38,6 +38,9 @@ nonisolated enum OptimizationOutputSettings {
     private static let conversionOutputModeKey = "optimization.conversionOutputMode"
     private static let saveLocationEnabledKey = "optimization.saveLocationEnabled"
     private static let temporaryRetentionDaysKey = "optimization.temporaryRetentionDays"
+    private static let optimizationOutputModeKey = "optimization.optimizationOutputMode"
+    private static let watchedFolderPathKey = "optimization.watchedFolderPath"
+    private static let watchedFolderEnabledKey = "optimization.watchedFolderEnabled"
 
     static var outputDirectory: URL {
         get {
@@ -65,6 +68,19 @@ nonisolated enum OptimizationOutputSettings {
         }
     }
 
+    static var optimizationOutputMode: ConversionOutputMode {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: optimizationOutputModeKey),
+                  let mode = ConversionOutputMode(rawValue: raw) else {
+                return .duplicate
+            }
+            return mode
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: optimizationOutputModeKey)
+        }
+    }
+
     static var saveLocationEnabled: Bool {
         get {
             UserDefaults.standard.bool(forKey: saveLocationEnabledKey)
@@ -81,6 +97,32 @@ nonisolated enum OptimizationOutputSettings {
         }
         set {
             UserDefaults.standard.set(clampTemporaryRetentionDays(newValue), forKey: temporaryRetentionDaysKey)
+        }
+    }
+
+    static var watchedFolderURL: URL? {
+        get {
+            guard let path = UserDefaults.standard.string(forKey: watchedFolderPathKey),
+                  !path.isEmpty else {
+                return nil
+            }
+            return URL(fileURLWithPath: path, isDirectory: true)
+        }
+        set {
+            if let url = newValue {
+                UserDefaults.standard.set(url.standardizedFileURL.path, forKey: watchedFolderPathKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: watchedFolderPathKey)
+            }
+        }
+    }
+
+    static var watchedFolderEnabled: Bool {
+        get {
+            UserDefaults.standard.bool(forKey: watchedFolderEnabledKey)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: watchedFolderEnabledKey)
         }
     }
 

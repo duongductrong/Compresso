@@ -70,6 +70,12 @@ struct ContentView: View {
     @State private var isImporting = false
     @State private var isDropTargeted = false
 
+    @State private var optimizationOutputMode = OptimizationOutputSettings.optimizationOutputMode
+    @State private var saveLocationEnabled = OptimizationOutputSettings.saveLocationEnabled
+    @State private var outputDirectory = OptimizationOutputSettings.outputDirectory
+    @State private var watchedFolderEnabled = OptimizationOutputSettings.watchedFolderEnabled
+    @State private var watchedFolderURL = OptimizationOutputSettings.watchedFolderURL
+
     var body: some View {
         HStack(spacing: 0) {
             dropZonePane
@@ -89,6 +95,59 @@ struct ContentView: View {
         .onAppear {
             quickAccess.start()
             concurrency = quickAccess.maximumConcurrentOptimizations
+            
+            // Sync settings
+            optimizationOutputMode = OptimizationOutputSettings.optimizationOutputMode
+            saveLocationEnabled = OptimizationOutputSettings.saveLocationEnabled
+            outputDirectory = OptimizationOutputSettings.outputDirectory
+            watchedFolderEnabled = OptimizationOutputSettings.watchedFolderEnabled
+            watchedFolderURL = OptimizationOutputSettings.watchedFolderURL
+            
+            if watchedFolderEnabled {
+                FolderWatcherService.shared.start()
+            }
+        }
+        .onChange(of: optimizationOutputMode) { newValue in
+            OptimizationOutputSettings.optimizationOutputMode = newValue
+        }
+        .onChange(of: saveLocationEnabled) { newValue in
+            OptimizationOutputSettings.saveLocationEnabled = newValue
+        }
+        .onChange(of: watchedFolderEnabled) { newValue in
+            OptimizationOutputSettings.watchedFolderEnabled = newValue
+            if newValue {
+                FolderWatcherService.shared.start()
+            } else {
+                FolderWatcherService.shared.stop()
+            }
+        }
+        .onChange(of: watchedFolderURL) { newValue in
+            OptimizationOutputSettings.watchedFolderURL = newValue
+            if watchedFolderEnabled {
+                FolderWatcherService.shared.start()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            let newMode = OptimizationOutputSettings.optimizationOutputMode
+            if optimizationOutputMode != newMode {
+                optimizationOutputMode = newMode
+            }
+            let newSave = OptimizationOutputSettings.saveLocationEnabled
+            if saveLocationEnabled != newSave {
+                saveLocationEnabled = newSave
+            }
+            let newDir = OptimizationOutputSettings.outputDirectory
+            if outputDirectory != newDir {
+                outputDirectory = newDir
+            }
+            let newWatchEnabled = OptimizationOutputSettings.watchedFolderEnabled
+            if watchedFolderEnabled != newWatchEnabled {
+                watchedFolderEnabled = newWatchEnabled
+            }
+            let newWatchURL = OptimizationOutputSettings.watchedFolderURL
+            if watchedFolderURL != newWatchURL {
+                watchedFolderURL = newWatchURL
+            }
         }
         .background(WorkspaceWindowConfigurator())
         .background(VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow).ignoresSafeArea())
@@ -178,9 +237,6 @@ struct ContentView: View {
 
     private var compactDropHeader: some View {
         VStack(spacing: 0) {
-            Divider()
-                .opacity(0.6)
-
             HStack(spacing: 12) {
                 // Info label (no icon)
                 Text(isDropTargeted ? "Release to add files" : "\(quickAccess.items.count) " + (quickAccess.items.count == 1 ? "file" : "files") + " in queue")
@@ -284,6 +340,7 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     qualitySection
                     outputSection
+                    watcherSection
                     capacitySection
                 }
                 .padding(20)
@@ -387,6 +444,78 @@ struct ContentView: View {
                     .onChange(of: viewStyle) { newValue in
                         CompressoWorkspaceViewStyle.current = newValue
                     }
+                }
+
+                configRow(title: "Save Mode") {
+                    Picker("", selection: $optimizationOutputMode) {
+                        Text("Replace Original").tag(ConversionOutputMode.replace)
+                        Text("Create New File").tag(ConversionOutputMode.duplicate)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                }
+
+                if optimizationOutputMode == .duplicate {
+                    configRow(title: "Destination") {
+                        Picker("", selection: $saveLocationEnabled) {
+                            Text("Temporary Folder").tag(false)
+                            Text("Custom Folder").tag(true)
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                    }
+
+                    if saveLocationEnabled {
+                        HStack(spacing: 8) {
+                            Text(OptimizationOutputSettings.displayName(for: outputDirectory))
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            
+                            Spacer()
+                            
+                            Button("Choose...") {
+                                chooseOutputDirectory()
+                            }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.accentColor)
+                        }
+                        .padding(.top, 2)
+                    }
+                }
+            }
+        }
+    }
+
+    private var watcherSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel("Folder Watcher")
+
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle("Enable Folder Watch", isOn: $watchedFolderEnabled)
+                    .font(.system(size: 12, weight: .medium))
+                    .toggleStyle(.checkbox)
+
+                if watchedFolderEnabled {
+                    HStack(spacing: 8) {
+                        Text(watchedFolderURL.map { OptimizationOutputSettings.displayName(for: $0) } ?? "Select Folder...")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        
+                        Spacer()
+                        
+                        Button("Choose...") {
+                            chooseWatchedFolder()
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.accentColor)
+                    }
+                    .padding(.top, 2)
                 }
             }
         }
@@ -492,6 +621,39 @@ struct ContentView: View {
 
     private func compressAction() {
         quickAccess.startStagedJobs()
+    }
+
+    private func chooseOutputDirectory() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose Destination Folder"
+        panel.message = "Optimized files will be saved here."
+        panel.prompt = "Choose"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
+        panel.directoryURL = outputDirectory
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        OptimizationOutputSettings.outputDirectory = url
+        outputDirectory = url
+    }
+
+    private func chooseWatchedFolder() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose Folder to Watch"
+        panel.message = "Compresso will automatically optimize new files added here."
+        panel.prompt = "Choose"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.canCreateDirectories = true
+        if let current = watchedFolderURL {
+            panel.directoryURL = current
+        }
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        watchedFolderURL = url
     }
 
     // MARK: - Layout Helpers

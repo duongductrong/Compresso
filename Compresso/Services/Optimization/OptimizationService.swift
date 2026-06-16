@@ -81,7 +81,8 @@ nonisolated enum OptimizationService {
         guard kind.isSupported else { throw OptimizationError.unsupportedType }
 
         let originalBytes = fileSize(at: sourceURL)
-        let outputURL = try makeOutputURL(for: sourceURL, kind: kind)
+        let mode = OptimizationOutputSettings.optimizationOutputMode
+        let outputURL = try makeOutputURL(for: sourceURL, kind: kind, mode: mode)
 
         switch kind {
         case .png:
@@ -104,11 +105,22 @@ nonisolated enum OptimizationService {
             throw OptimizationError.outputMissing
         }
 
+        let finalOutputURL: URL
+        if mode == .replace {
+            if FileManager.default.fileExists(atPath: sourceURL.path) {
+                try FileManager.default.removeItem(at: sourceURL)
+            }
+            try FileManager.default.moveItem(at: outputURL, to: sourceURL)
+            finalOutputURL = sourceURL
+        } else {
+            finalOutputURL = outputURL
+        }
+
         return OptimizationResult(
-            outputURL: outputURL,
+            outputURL: finalOutputURL,
             originalBytes: originalBytes,
-            optimizedBytes: fileSize(at: outputURL),
-            pixelSize: NSImage(contentsOf: outputURL)?.pixelSizeForOptimization
+            optimizedBytes: fileSize(at: finalOutputURL),
+            pixelSize: NSImage(contentsOf: finalOutputURL)?.pixelSizeForOptimization
         )
     }
 
@@ -376,7 +388,7 @@ nonisolated enum OptimizationService {
         }
     }
 
-    private static func makeOutputURL(for sourceURL: URL, kind: QuickAccessFileKind) throws -> URL {
+    private static func makeOutputURL(for sourceURL: URL, kind: QuickAccessFileKind, mode: ConversionOutputMode) throws -> URL {
         let pathExtension: String
 
         switch kind {
@@ -388,11 +400,20 @@ nonisolated enum OptimizationService {
             pathExtension = sourceURL.pathExtension
         }
 
-        return try makeOutputURL(
-            for: sourceURL,
-            nameComponent: "optimized",
-            pathExtension: pathExtension
-        )
+        if mode == .replace {
+            let directory = try OptimizationTemporaryFileStore.makeJobOutputDirectory()
+            let baseName = sourceURL.deletingPathExtension().lastPathComponent
+            let suffix = UUID().uuidString.prefix(8)
+            return directory
+                .appendingPathComponent("\(baseName)-temp-\(suffix)")
+                .appendingPathExtension(pathExtension)
+        } else {
+            return try makeOutputURL(
+                for: sourceURL,
+                nameComponent: "optimized",
+                pathExtension: pathExtension
+            )
+        }
     }
 
     private static func makeOutputURL(
