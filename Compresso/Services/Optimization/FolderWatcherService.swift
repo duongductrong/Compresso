@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import SwiftUI
+import CoreServices
 
 @MainActor
 final class FolderWatcherService: ObservableObject {
@@ -8,10 +9,9 @@ final class FolderWatcherService: ObservableObject {
 
     @Published private(set) var isWatching = false
 
-    private var fileDescriptor: Int32 = -1
-    private var dispatchSource: DispatchSourceFileSystemObject?
-    private let queue = DispatchQueue(label: "com.ghosted.compresso.folderwatcher", qos: .default)
+    private var streamRef: FSEventStreamRef?
     private var watchedFiles: Set<URL> = []
+    private var processingFiles: Set<URL> = []
 
     private init() {}
 
@@ -31,107 +31,136 @@ final class FolderWatcherService: ObservableObject {
 
         // Populate initial file set to avoid double-processing already-present files
         watchedFiles = scanFolder(folder)
+        processingFiles.removeAll()
 
-        let fd = open(folder.path, O_EVTONLY)
-        guard fd != -1 else {
-            return
-        }
-        self.fileDescriptor = fd
-
-        let source = DispatchSource.makeFileSystemObjectSource(
-            fileDescriptor: fd,
-            eventMask: .write,
-            queue: queue
+        var context = FSEventStreamContext(
+            version: 0,
+            info: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()),
+            retain: nil,
+            release: nil,
+            copyDescription: nil
         )
 
-        source.setEventHandler { [weak self] in
-            guard let self = self else { return }
+        let paths = [folder.path as NSString] as CFArray
+
+        let callback: FSEventStreamCallback = { (streamRef, clientCallBackInfo, numEvents, eventPaths, eventFlags, eventIds) in
+            guard let clientCallBackInfo = clientCallBackInfo else { return }
+            let service = Unmanaged<FolderWatcherService>.fromOpaque(clientCallBackInfo).takeUnretainedValue()
             Task { @MainActor in
-                await self.handleFolderContentsChanged()
+                await service.handleFolderContentsChanged()
             }
         }
 
-        source.setCancelHandler {
-            close(fd)
+        guard let stream = FSEventStreamCreate(
+            nil,
+            callback,
+            &context,
+            paths,
+            FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
+            1.0, // Latency in seconds
+            FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer)
+        ) else {
+            return
         }
 
-        self.dispatchSource = source
-        source.resume()
+        self.streamRef = stream
+        FSEventStreamScheduleWithRunLoop(stream, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
+        FSEventStreamStart(stream)
         isWatching = true
     }
 
     func stop() {
         isWatching = false
-        dispatchSource?.cancel()
-        dispatchSource = nil
-        if fileDescriptor != -1 {
-            close(fileDescriptor)
-            fileDescriptor = -1
+        if let stream = streamRef {
+            FSEventStreamStop(stream)
+            FSEventStreamInvalidate(stream)
+            FSEventStreamRelease(stream)
+            streamRef = nil
         }
         watchedFiles.removeAll()
+        processingFiles.removeAll()
     }
 
     private func scanFolder(_ folder: URL) -> Set<URL> {
-        do {
-            let urls = try FileManager.default.contentsOfDirectory(
-                at: folder,
-                includingPropertiesForKeys: [.isDirectoryKey],
-                options: [.skipsHiddenFiles]
-            )
-            var files = Set<URL>()
-            for url in urls {
-                var isDir: ObjCBool = false
-                if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), !isDir.boolValue {
-                    files.insert(url.standardizedFileURL)
-                }
-            }
-            return files
-        } catch {
+        guard let enumerator = FileManager.default.enumerator(
+            at: folder,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]
+        ) else {
             return []
         }
+
+        var files = Set<URL>()
+        for case let url as URL in enumerator {
+            do {
+                let resourceValues = try url.resourceValues(forKeys: [.isDirectoryKey])
+                if let isDirectory = resourceValues.isDirectory, !isDirectory {
+                    files.insert(url.standardizedFileURL)
+                }
+            } catch {
+                // Ignore individual file errors
+            }
+        }
+        return files
     }
 
     private func handleFolderContentsChanged() async {
         guard let folder = OptimizationOutputSettings.watchedFolderURL else { return }
         let currentFiles = scanFolder(folder)
 
-        // Find new files
-        let newFiles = currentFiles.subtracting(watchedFiles)
-        
-        // Update local cache
-        watchedFiles = currentFiles
+        // Find new files that are not already watched or being processed
+        let newFiles = currentFiles.subtracting(watchedFiles).subtracting(processingFiles)
+
+        // Update watchedFiles to only keep existing files (remove deleted ones)
+        watchedFiles = currentFiles.intersection(watchedFiles)
 
         guard !newFiles.isEmpty else { return }
 
         for file in newFiles {
             let kind = QuickAccessFileKind.detect(from: file)
-            guard kind.isSupported else { continue }
+            guard kind.isSupported else {
+                watchedFiles.insert(file)
+                continue
+            }
 
             let filename = file.lastPathComponent
             // Prevent self-trigger loops
             if filename.contains("-optimized-") || filename.contains("-converted-") {
+                watchedFiles.insert(file)
                 continue
             }
+
+            // Mark as processing
+            processingFiles.insert(file)
 
             // Wait for file completion in background, then import
             Task {
                 let isReady = await waitUntilFileIsReady(file)
-                if isReady {
-                    // Check if already in queue to prevent double import
-                    let manager = QuickAccessManager.shared
-                    let alreadyQueued = manager.items.contains { item in
-                        item.sourceURL.standardizedFileURL == file.standardizedFileURL ||
-                        item.outputURL?.standardizedFileURL == file.standardizedFileURL
-                    }
-                    if !alreadyQueued {
-                        manager.ingestDroppedURLs([file])
-                    }
-                }
+                await self.didFinishCheckingFile(file, isReady: isReady)
             }
         }
     }
 
-    private func waitUntilFileIsReady(_ file: URL) async -> Bool {
+    private func didFinishCheckingFile(_ file: URL, isReady: Bool) {
+        guard isWatching else { return }
+        processingFiles.remove(file)
+
+        if isReady {
+            watchedFiles.insert(file)
+
+            // Check if already in queue to prevent double import
+            let manager = QuickAccessManager.shared
+            let alreadyQueued = manager.items.contains { item in
+                item.sourceURL.standardizedFileURL == file.standardizedFileURL ||
+                item.outputURL?.standardizedFileURL == file.standardizedFileURL
+            }
+            if !alreadyQueued {
+                manager.ingestDroppedURLs([file])
+            }
+        }
+    }
+
+    nonisolated private func waitUntilFileIsReady(_ file: URL) async -> Bool {
         var prevSize: Int64 = -1
         var retries = 0
         while retries < 15 {

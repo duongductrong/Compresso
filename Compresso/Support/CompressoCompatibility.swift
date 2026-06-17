@@ -1,5 +1,7 @@
 import AppKit
 import SwiftUI
+import ObjectiveC
+
 
 enum CompressoMaterialKind {
     case ultraThin
@@ -232,3 +234,61 @@ struct VisualEffectView: NSViewRepresentable {
         nsView.state = state
     }
 }
+
+struct SplitViewDividerConfigurator: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = ConfiguratorView()
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class ConfiguratorView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            configureParentSplitView()
+        }
+
+        override func viewDidMoveToSuperview() {
+            super.viewDidMoveToSuperview()
+            configureParentSplitView()
+        }
+
+        private func configureParentSplitView() {
+            var current: NSView? = self
+            while let view = current {
+                if let splitView = view as? NSSplitView {
+                    setupCustomSplitView(splitView)
+                    return
+                }
+                current = view.superview
+            }
+        }
+
+        private func setupCustomSplitView(_ splitView: NSSplitView) {
+            guard let clazz = object_getClass(splitView) else { return }
+
+            let selector = #selector(NSSplitView.drawDivider(in:))
+            guard let method = class_getInstanceMethod(clazz, selector) else { return }
+
+            // Create a block that matches the method signature: (self, rect) -> Void
+            let drawDividerBlock: @convention(block) (AnyObject, NSRect) -> Void = { _, rect in
+                let color = NSColor(name: nil) { appearance in
+                    if appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
+                        return NSColor(white: 0.28, alpha: 1.0)
+                    } else {
+                        return NSColor(white: 0.82, alpha: 1.0)
+                    }
+                }
+                color.setFill()
+                rect.fill()
+            }
+
+            let imp = imp_implementationWithBlock(drawDividerBlock)
+            class_replaceMethod(clazz, selector, imp, method_getTypeEncoding(method))
+
+            splitView.needsDisplay = true
+        }
+    }
+}
+

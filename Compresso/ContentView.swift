@@ -79,8 +79,15 @@ struct ContentView: View {
     var body: some View {
         HStack(spacing: 0) {
             dropZonePane
-            Divider()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Rectangle()
+                .fill(Color(NSColor.separatorColor))
+                .frame(width: 1)
+                .ignoresSafeArea(.container, edges: .top)
+
             configurationPane
+                .frame(width: 300)
         }
         .ignoresSafeArea(.container, edges: .top)
         .fileImporter(
@@ -343,14 +350,16 @@ struct ContentView: View {
                     watcherSection
                     capacitySection
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+                .padding(.top, 10)
             }
             .compressoScrollBounceBasedOnSize()
 
             actionFooter
         }
-        .frame(width: CompressoWorkspaceMetrics.sidebarWidth)
     }
+
 
     private var configurationHeader: some View {
         HStack {
@@ -371,8 +380,8 @@ struct ContentView: View {
         }
         .frame(height: 28)
         .padding(.horizontal, 16)
-        .padding(.top, 16)
-        .padding(.bottom, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
     }
 
     // MARK: - Configuration Sections
@@ -388,6 +397,7 @@ struct ContentView: View {
                             value: $imageQuality,
                             in: 10...100
                         )
+                        .frame(width: 100)
                         .onChange(of: imageQuality) { newValue in
                             let rounded = round(newValue / 5.0) * 5.0
                             if rounded != imageQuality {
@@ -409,6 +419,7 @@ struct ContentView: View {
                             value: $videoQuality,
                             in: 18...51
                         )
+                        .frame(width: 100)
                         .onChange(of: videoQuality) { newValue in
                             let rounded = round(newValue)
                             if rounded != videoQuality {
@@ -441,6 +452,7 @@ struct ContentView: View {
                     }
                     .labelsHidden()
                     .pickerStyle(.segmented)
+                    .frame(width: 130, alignment: .trailing)
                     .onChange(of: viewStyle) { newValue in
                         CompressoWorkspaceViewStyle.current = newValue
                     }
@@ -453,6 +465,7 @@ struct ContentView: View {
                     }
                     .labelsHidden()
                     .pickerStyle(.menu)
+                    .frame(width: 150, alignment: .trailing)
                 }
 
                 if optimizationOutputMode == .duplicate {
@@ -463,17 +476,19 @@ struct ContentView: View {
                         }
                         .labelsHidden()
                         .pickerStyle(.menu)
+                        .frame(width: 150, alignment: .trailing)
                     }
 
                     if saveLocationEnabled {
                         HStack(spacing: 8) {
+                            Spacer()
+                            
                             Text(OptimizationOutputSettings.displayName(for: outputDirectory))
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
-                            
-                            Spacer()
+                                .multilineTextAlignment(.trailing)
                             
                             Button("Choose...") {
                                 chooseOutputDirectory()
@@ -494,19 +509,23 @@ struct ContentView: View {
             sectionLabel("Folder Watcher")
 
             VStack(alignment: .leading, spacing: 8) {
-                Toggle("Enable Folder Watch", isOn: $watchedFolderEnabled)
-                    .font(.system(size: 12, weight: .medium))
-                    .toggleStyle(.checkbox)
+                configRow(title: "Enable Folder Watch") {
+                    Toggle("", isOn: $watchedFolderEnabled)
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .labelsHidden()
+                }
 
                 if watchedFolderEnabled {
                     HStack(spacing: 8) {
+                        Spacer()
+                        
                         Text(watchedFolderURL.map { OptimizationOutputSettings.displayName(for: $0) } ?? "Select Folder...")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                             .lineLimit(1)
                             .truncationMode(.middle)
-                        
-                        Spacer()
+                            .multilineTextAlignment(.trailing)
                         
                         Button("Choose...") {
                             chooseWatchedFolder()
@@ -540,6 +559,7 @@ struct ContentView: View {
                         ),
                         in: 1...12
                     )
+                    .frame(width: 100)
 
                     Text("\(concurrency)")
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
@@ -666,12 +686,16 @@ struct ContentView: View {
     }
 
     private func configRow<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .center, spacing: 8) {
             Text(title)
                 .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.primary)
+
+            Spacer()
 
             content()
         }
+        .frame(minHeight: 22)
     }
 }
 
