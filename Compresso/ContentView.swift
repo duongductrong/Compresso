@@ -682,7 +682,6 @@ struct ContentView: View {
         Text(text)
             .font(.system(size: 11, weight: .semibold))
             .foregroundColor(.secondary)
-            .textCase(.uppercase)
     }
 
     private func configRow<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
