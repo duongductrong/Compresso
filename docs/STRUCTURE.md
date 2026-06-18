@@ -35,6 +35,19 @@ Compresso/
     CompressoLaunchView.swift
 
   Features/
+    Home/
+      Components/
+        WorkspaceConfigLayout.swift
+        WorkspaceConfigurationPane.swift
+        WorkspaceDropZonePane.swift
+        WorkspaceFileCell.swift
+        WorkspaceQualitySection.swift
+        WorkspaceWindowConfigurator.swift
+      Models/
+        CompressoWorkspaceMetrics.swift
+        CompressoWorkspaceViewStyle.swift
+      ContentView.swift
+
     Onboarding/
       OnboardingPermissions.swift
       OnboardingStep.swift
@@ -79,6 +92,7 @@ Compresso/
   Services/
     Optimization/
       OptimizationOutputSettings.swift
+      OptimizationQualitySettings.swift
       OptimizationService.swift
       OptimizationTemporaryFileStore.swift
     Updates/
@@ -93,8 +107,6 @@ Compresso/
 
   ContentView.swift
   CompressoApp.swift
-
-scripts/
   build_and_run.sh
   bump-version.sh
   create-signing-cert.sh

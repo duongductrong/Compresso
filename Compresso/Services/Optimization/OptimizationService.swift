@@ -188,22 +188,23 @@ nonisolated enum OptimizationService {
         let executable = try requiredExecutable("jpegoptim")
         let maxQuality = OptimizationQualitySettings.imageQuality
         try FileManager.default.copyItem(at: sourceURL, to: outputURL)
-        try run(
-            executable,
-            arguments: [
-                "--strip-all",
-                "--max=\(maxQuality)",
-                outputURL.path
-            ]
-        )
+
+        var arguments = [String]()
+        if OptimizationQualitySettings.imageStripMetadata {
+            arguments.append("--strip-all")
+        }
+        arguments.append(contentsOf: ["--max=\(maxQuality)", outputURL.path])
+
+        try run(executable, arguments: arguments)
     }
 
     private static func runGifsicle(sourceURL: URL, outputURL: URL) throws {
         let executable = try requiredExecutable("gifsicle")
+        let level = OptimizationQualitySettings.gifsicleOptimizationLevel
         try run(
             executable,
             arguments: [
-                "-O3",
+                "-O\(level)",
                 sourceURL.path,
                 "-o",
                 outputURL.path
@@ -213,31 +214,25 @@ nonisolated enum OptimizationService {
 
     private static func runFFmpeg(sourceURL: URL, outputURL: URL) throws {
         let executable = try requiredExecutable("ffmpeg")
-        let crf = OptimizationQualitySettings.videoQuality
         try run(
             executable,
-            arguments: [
-                "-y",
-                "-i", sourceURL.path,
-                "-map_metadata", "-1",
-                "-c:v", "libx264",
-                "-preset", "medium",
-                "-crf", "\(crf)",
-                "-c:a", "aac",
-                "-b:a", "128k",
-                outputURL.path
-            ]
+            arguments: ffmpegEncodeArguments(
+                sourceURL: sourceURL,
+                outputURL: outputURL,
+                target: nil
+            )
         )
     }
 
     private static func runGhostscript(sourceURL: URL, outputURL: URL) throws {
         let executable = try requiredExecutable("gs")
+        let pdfPreset = OptimizationQualitySettings.pdfPreset.cliToken
         try run(
             executable,
             arguments: [
                 "-sDEVICE=pdfwrite",
                 "-dCompatibilityLevel=1.4",
-                "-dPDFSETTINGS=/ebook",
+                "-dPDFSETTINGS=\(pdfPreset)",
                 "-dNOPAUSE",
                 "-dQUIET",
                 "-dBATCH",
@@ -249,13 +244,14 @@ nonisolated enum OptimizationService {
 
     private static func runVips(sourceURL: URL, outputURL: URL) throws {
         let executable = try requiredExecutable("vips")
+        let maxWidth = OptimizationQualitySettings.imageMaxWidth
         try run(
             executable,
             arguments: [
                 "thumbnail",
                 sourceURL.path,
                 outputURL.path,
-                "2560",
+                "\(maxWidth)",
                 "--size", "down"
             ]
         )
@@ -331,13 +327,16 @@ nonisolated enum OptimizationService {
     }
 
     private static func runVideoToGIFConversion(sourceURL: URL, outputURL: URL) throws {
+        let fps = OptimizationQualitySettings.gifFrameRate
+        let width = OptimizationQualitySettings.gifMaxWidth
+
         if let executable = OptimizationToolResolver.executable(named: "gifski") {
             do {
                 try run(
                     executable,
                     arguments: [
-                        "--fps", "15",
-                        "--width", "720",
+                        "--fps", "\(fps)",
+                        "--width", "\(width)",
                         "--quality", "\(OptimizationQualitySettings.imageQuality)",
                         "--output", outputURL.path,
                         sourceURL.path
@@ -354,13 +353,16 @@ nonisolated enum OptimizationService {
 
     private static func runFFmpegGIFConversion(sourceURL: URL, outputURL: URL) throws {
         let executable = try requiredExecutable("ffmpeg")
+        let fps = OptimizationQualitySettings.gifFrameRate
+        let width = OptimizationQualitySettings.gifMaxWidth
+        let filter = "[0:v]fps=\(fps),scale=\(width):-1:flags=lanczos:force_original_aspect_ratio=decrease,split[v0][v1];[v0]palettegen[p];[v1][p]paletteuse=dither=sierra2_4a[gif]"
         try run(
             executable,
             arguments: [
                 "-y",
                 "-i", sourceURL.path,
                 "-filter_complex",
-                "[0:v]fps=15,scale=720:-1:flags=lanczos:force_original_aspect_ratio=decrease,split[v0][v1];[v0]palettegen[p];[v1][p]paletteuse=dither=sierra2_4a[gif]",
+                filter,
                 "-map", "[gif]",
                 "-loop", "0",
                 outputURL.path
@@ -454,10 +456,48 @@ nonisolated enum OptimizationService {
     private static func imageConversionOptions(for target: QuickAccessConversionTarget) -> [CFString: Any] {
         switch target {
         case .jpeg, .webp, .heic:
-            return [kCGImageDestinationLossyCompressionQuality: 0.92]
+            // Honor the shared image-quality knob (0–1 scale).
+            let quality = Double(OptimizationQualitySettings.imageQuality) / 100.0
+            return [kCGImageDestinationLossyCompressionQuality: quality]
         case .png, .gif, .mov, .mp4:
             return [:]
         }
+    }
+
+    /// Shared ffmpeg libx264 encode argument builder used by both the optimize
+    /// path (`runFFmpeg`, `target == nil`) and the transcode-fallback path
+    /// (`target != nil`). Applies the user's CRF, preset, and audio bitrate.
+    private static func ffmpegEncodeArguments(
+        sourceURL: URL,
+        outputURL: URL,
+        target: QuickAccessConversionTarget?
+    ) -> [String] {
+        let crf = OptimizationQualitySettings.videoQuality
+        let preset = OptimizationQualitySettings.videoEncoderPreset.rawValue
+        let audioBitrate = OptimizationQualitySettings.videoAudioBitrate.cliToken
+
+        var arguments = [
+            "-y",
+            "-i", sourceURL.path,
+            "-map_metadata", "-1",
+            "-c:v", "libx264",
+            "-preset", preset,
+            "-crf", "\(crf)",
+            "-c:a", "aac",
+            "-b:a", audioBitrate
+        ]
+
+        // The transcode fallback needs a compatible pixel format for broad
+        // player support; the optimize path keeps the source pixel format.
+        if target != nil {
+            arguments.append(contentsOf: ["-pix_fmt", "yuv420p"])
+        }
+
+        if target == .mp4 {
+            arguments += ["-movflags", "+faststart"]
+        }
+        arguments.append(outputURL.path)
+        return arguments
     }
 
     private static func ffmpegRemuxArguments(
@@ -484,22 +524,7 @@ nonisolated enum OptimizationService {
         outputURL: URL,
         target: QuickAccessConversionTarget
     ) -> [String] {
-        var arguments = [
-            "-y",
-            "-i", sourceURL.path,
-            "-map_metadata", "-1",
-            "-c:v", "libx264",
-            "-preset", "medium",
-            "-crf", "20",
-            "-pix_fmt", "yuv420p",
-            "-c:a", "aac",
-            "-b:a", "160k"
-        ]
-        if target == .mp4 {
-            arguments += ["-movflags", "+faststart"]
-        }
-        arguments.append(outputURL.path)
-        return arguments
+        ffmpegEncodeArguments(sourceURL: sourceURL, outputURL: outputURL, target: target)
     }
 
     private static func outputDirectory() throws -> URL {
